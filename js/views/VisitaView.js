@@ -1,6 +1,8 @@
 /**
  * VisitaView.js
- * Vista principal: tabla de visitas a Puntos de Venta
+ * Vista de registros PDV en formato de tarjetas tipo publicación.
+ * Cada tarjeta muestra imagen, nombre, código, dirección e inconveniente,
+ * con una sección expandible para ver el resto de la información.
  */
 
 class VisitaView extends BaseView {
@@ -9,12 +11,9 @@ class VisitaView extends BaseView {
         this.visitas = [];
     }
 
-    /**
-     * Renderizar la tabla completa
-     * @param {Array|null} visitas - si es null, carga todos los registros
-     */
+    // ── Renderizado principal ──────────────────────────────────────────────────
+
     async render(visitas = null) {
-        // Limpiar listeners anteriores para evitar duplicados
         this.removeAllListeners();
 
         if (visitas === null) {
@@ -22,7 +21,7 @@ class VisitaView extends BaseView {
         }
         this.visitas = visitas;
 
-        // Actualizar contador
+        // Contador en toolbar
         const countEl = document.getElementById('record-count');
         if (countEl) {
             countEl.textContent = visitas.length > 0
@@ -35,116 +34,192 @@ class VisitaView extends BaseView {
 
         if (visitas.length === 0) {
             container.innerHTML = `
-                <div style="text-align:center; padding:80px 20px; color:#aaa;">
-                    <span class="material-icons" style="font-size:72px; display:block; margin-bottom:16px; color:#ddd;">store</span>
-                    <p style="font-size:16px; margin-bottom:8px; color:#999;">No hay registros</p>
-                    <p style="font-size:13px;">Importá desde Excel o agregá un nuevo registro con el botón <strong>+ Nuevo Registro</strong></p>
-                </div>
-            `;
+                <div style="text-align:center; padding:80px 20px;">
+                    <span class="material-icons"
+                          style="font-size:72px; display:block; margin-bottom:16px; color:#ddd;">
+                        store
+                    </span>
+                    <p style="font-size:16px; color:#999; margin-bottom:8px;">No hay registros</p>
+                    <p style="font-size:13px; color:#bbb;">
+                        Importá desde Excel o usá <strong>+ Nuevo Registro</strong>
+                    </p>
+                </div>`;
             return;
         }
 
-        let html = `
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width:110px;">Nro. Cliente</th>
-                        <th style="width:160px;">Nombre PDV</th>
-                        <th style="width:170px;">Dirección</th>
-                        <th>Inconveniente Ocurrido</th>
-                        <th>Soluciones</th>
-                        <th style="width:95px;">Fecha Visita</th>
-                        <th style="width:105px; text-align:center;">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
+        container.innerHTML = `
+            <div class="pdv-card-grid">
+                ${visitas.map(v => this._buildCard(v)).join('')}
+            </div>`;
 
-        for (const v of visitas) {
-            const inconv = this._esc(v.inconveniente);
-            const soluc  = this._esc(v.soluciones);
-
-            html += `
-                <tr>
-                    <td><strong>${this._esc(v.nroCliente) || '-'}</strong></td>
-                    <td>${this._esc(v.nombrePDV) || '-'}</td>
-                    <td>${this._esc(v.direccion) || '-'}</td>
-                    <td>
-                        <span title="${inconv}" style="cursor:default;">
-                            ${this._trunc(v.inconveniente, 65)}
-                        </span>
-                    </td>
-                    <td>
-                        <span title="${soluc}" style="cursor:default;">
-                            ${this._trunc(v.soluciones, 65)}
-                        </span>
-                    </td>
-                    <td style="white-space:nowrap; font-size:12px;">
-                        ${v.fechaVisita ? DateUtils.format(v.fechaVisita) : '-'}
-                    </td>
-                    <td style="text-align:center; white-space:nowrap;">
-                        ${v.imagenes && v.imagenes.length > 0
-                            ? `<span title="${v.imagenes.length} imagen${v.imagenes.length > 1 ? 'es' : ''}"
-                                    style="display:inline-flex; align-items:center; gap:2px;
-                                           background:#E3F2FD; color:#1565C0; border-radius:10px;
-                                           padding:2px 7px; font-size:11px; margin-right:4px; vertical-align:middle;">
-                                <span class="material-icons" style="font-size:13px;">photo_camera</span>
-                                ${v.imagenes.length}
-                               </span>`
-                            : ''}
-                        <button class="btn btn-sm btn-primary btn-view" data-id="${v.id}" title="Ver detalle completo">
-                            <span class="material-icons">visibility</span>
-                        </button>
-                        <button class="btn btn-sm btn-secondary btn-edit" data-id="${v.id}" title="Editar">
-                            <span class="material-icons">edit</span>
-                        </button>
-                        <button class="btn btn-sm btn-danger btn-delete" data-id="${v.id}" title="Eliminar">
-                            <span class="material-icons">delete</span>
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }
-
-        html += `</tbody></table>`;
-        container.innerHTML = html;
-
-        this._attachTableListeners(container);
+        this._attachCardListeners(container);
     }
 
-    _attachTableListeners(container) {
-        container.querySelectorAll('.btn-view').forEach(btn => {
-            this.addListener(btn, 'click', (e) => {
-                eventBus.emit('visita:view', { id: e.target.closest('button').dataset.id });
+    // ── Construcción de tarjeta ────────────────────────────────────────────────
+
+    _buildCard(v) {
+        const imagenes      = Array.isArray(v.imagenes) ? v.imagenes : [];
+        const hasImg        = imagenes.length > 0;
+        const inconvFull    = v.inconveniente || '';
+        const inconvPreview = this._trunc(inconvFull, 120);
+
+        // ¿Hay algo para expandir?
+        const needsToggle = inconvFull.length > 120 || !!v.soluciones || imagenes.length > 1;
+
+        // — Sección imagen —
+        const imageHTML = hasImg
+            ? `<div class="pdv-card__image">
+                   <img src="${imagenes[0]}" alt="${this._esc(v.nombrePDV)}">
+                   ${imagenes.length > 1
+                       ? `<div class="pdv-card__img-badge">
+                              <span class="material-icons" style="font-size:14px;">photo_library</span>
+                              ${imagenes.length}
+                          </div>`
+                       : ''}
+               </div>`
+            : `<div class="pdv-card__image pdv-card__image--placeholder">
+                   <span class="material-icons">store</span>
+               </div>`;
+
+        // — Sección expandible (inconveniente completo + soluciones + galería) —
+        const expandedHTML = needsToggle ? `
+            <div class="pdv-card__expanded" id="exp-${v.id}">
+
+                ${inconvFull.length > 120 ? `
+                <div class="pdv-card__detail-block">
+                    <span class="pdv-card__detail-label">Inconveniente completo</span>
+                    <p>${this._esc(inconvFull)}</p>
+                </div>` : ''}
+
+                ${v.soluciones ? `
+                <div class="pdv-card__detail-block">
+                    <span class="pdv-card__detail-label">Soluciones</span>
+                    <p>${this._esc(v.soluciones)}</p>
+                </div>` : ''}
+
+                ${imagenes.length > 1 ? `
+                <div class="pdv-card__detail-block">
+                    <span class="pdv-card__detail-label">
+                        Todas las imágenes (${imagenes.length})
+                    </span>
+                    <div class="pdv-card__mini-gallery">
+                        ${imagenes.map(b64 => `
+                            <a href="${b64}" target="_blank" title="Ver imagen completa">
+                                <img src="${b64}" alt="imagen">
+                            </a>`).join('')}
+                    </div>
+                </div>` : ''}
+
+            </div>` : '';
+
+        const toggleHTML = needsToggle ? `
+            <button class="pdv-card__toggle"
+                    data-target="exp-${v.id}">
+                <span class="material-icons">expand_more</span>
+                <span class="toggle-label">Ver más</span>
+            </button>` : '';
+
+        // — Tarjeta completa —
+        return `
+        <div class="pdv-card" data-id="${v.id}">
+
+            ${imageHTML}
+
+            <div class="pdv-card__body">
+
+                <p class="pdv-card__nombre">${this._esc(v.nombrePDV) || '—'}</p>
+
+                <div class="pdv-card__meta">
+                    ${v.nroCliente
+                        ? `<span class="pdv-card__codigo">#${this._esc(v.nroCliente)}</span>`
+                        : ''}
+                    ${v.fechaVisita
+                        ? `<span class="pdv-card__fecha">${DateUtils.format(v.fechaVisita)}</span>`
+                        : ''}
+                </div>
+
+                ${v.direccion ? `
+                <div class="pdv-card__direccion">
+                    <span class="material-icons">place</span>
+                    ${this._esc(v.direccion)}
+                </div>` : ''}
+
+                <hr class="pdv-card__divider">
+
+                ${inconvFull
+                    ? `<p class="pdv-card__inconv-label">Inconveniente</p>
+                       <p class="pdv-card__inconveniente">${this._esc(inconvPreview)}</p>`
+                    : `<p class="pdv-card__inconveniente"
+                          style="color:#ccc; font-style:italic; font-size:12px;">
+                           Sin inconveniente registrado
+                       </p>`}
+
+                ${expandedHTML}
+                ${toggleHTML}
+
+                <div class="pdv-card__actions">
+                    <button class="btn btn-sm btn-secondary btn-edit"
+                            data-id="${v.id}"
+                            title="Editar"
+                            style="flex:1;">
+                        <span class="material-icons">edit</span>
+                        Editar
+                    </button>
+                    <button class="btn btn-sm btn-danger btn-delete"
+                            data-id="${v.id}"
+                            title="Eliminar">
+                        <span class="material-icons">delete</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>`;
+    }
+
+    // ── Listeners ──────────────────────────────────────────────────────────────
+
+    _attachCardListeners(container) {
+
+        // Expandir / contraer
+        container.querySelectorAll('.pdv-card__toggle').forEach(btn => {
+            this.addListener(btn, 'click', () => {
+                const targetEl = document.getElementById(btn.dataset.target);
+                const label    = btn.querySelector('.toggle-label');
+                const isOpen   = btn.classList.toggle('open');
+
+                if (targetEl) targetEl.classList.toggle('open', isOpen);
+                if (label)    label.textContent = isOpen ? 'Ver menos' : 'Ver más';
             });
         });
 
+        // Editar
         container.querySelectorAll('.btn-edit').forEach(btn => {
-            this.addListener(btn, 'click', (e) => {
-                eventBus.emit('visita:edit', { id: e.target.closest('button').dataset.id });
+            this.addListener(btn, 'click', () => {
+                eventBus.emit('visita:edit', { id: btn.dataset.id });
             });
         });
 
+        // Eliminar
         container.querySelectorAll('.btn-delete').forEach(btn => {
-            this.addListener(btn, 'click', (e) => {
-                eventBus.emit('visita:delete', { id: e.target.closest('button').dataset.id });
+            this.addListener(btn, 'click', () => {
+                eventBus.emit('visita:delete', { id: btn.dataset.id });
             });
         });
     }
 
-    // Escapa HTML para evitar XSS
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
     _esc(text) {
         if (!text) return '';
         return String(text)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+            .replace(/&/g,  '&amp;')
+            .replace(/</g,  '&lt;')
+            .replace(/>/g,  '&gt;')
+            .replace(/"/g,  '&quot;');
     }
 
-    // Trunca texto largo con "…"
     _trunc(text, max) {
-        if (!text) return '-';
+        if (!text) return '';
         const s = String(text).trim();
         return s.length > max ? s.slice(0, max) + '…' : s;
     }
