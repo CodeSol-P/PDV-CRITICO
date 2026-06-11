@@ -51,10 +51,20 @@ class App {
      * Configurar eventos globales
      */
     setupGlobalEvents() {
-        // Botón Sync
+        // Botón Nuevo PDV — requiere autenticación
+        const btnAddPDV = document.getElementById("btn-add-pdv");
+        if (btnAddPDV) {
+            btnAddPDV.addEventListener("click", () => {
+                authService.requireAuth("Nuevo PDV", () => eventBus.emit("pdv:create"));
+            });
+        }
+
+        // Botón Sync — requiere autenticación
         const syncBtn = document.getElementById("sync-btn");
         if (syncBtn) {
-            syncBtn.addEventListener("click", () => this.openSyncMenu());
+            syncBtn.addEventListener("click", () => {
+                authService.requireAuth("Sincronizar datos", () => this.openSyncMenu());
+            });
         }
 
         // Botón Configuración

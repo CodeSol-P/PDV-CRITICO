@@ -168,7 +168,14 @@ const VALIDATION_RULES = {
     }
 };
 
+// Usuarios autorizados para acciones críticas (Nuevo PDV y Sincronizar datos)
+// Para agregar o modificar usuarios, editar esta lista
+const AUTH_USERS = [
+    { username: "admin",      password: "cargo2026"  },
+    { username: "supervisor", password: "pdv2026"    }
+];
+
 // Exportar configuración
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { APP_CONFIG, ENUMS, DEFAULTS, MESSAGES, API_ENDPOINTS, VALIDATION_RULES };
+    module.exports = { APP_CONFIG, ENUMS, DEFAULTS, MESSAGES, API_ENDPOINTS, VALIDATION_RULES, AUTH_USERS };
 }
