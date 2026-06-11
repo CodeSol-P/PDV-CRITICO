@@ -1,284 +1,241 @@
 /**
  * ExcelManager.js
- * Gestión de lectura/escritura de archivos Excel
- * Sincronización bidireccional con archivos .xlsx
+ * Importación y exportación de Excel para registros de visitas PDV.
+ *
+ * Columnas soportadas en importación (insensible a mayúsculas/minúsculas y espacios):
+ *   Nro. Cliente / Número de Cliente / Cliente / ...
+ *   Nombre PDV / Nombre del Punto de Venta / ...
+ *   Dirección / Domicilio / ...
+ *   Inconveniente Ocurrido / Inconveniente / Problema / ...
+ *   Soluciones / Solución / Resolución / ...
+ *   Fecha Visita / Fecha / ... (opcional, por defecto hoy)
  */
 
 class ExcelManager {
-    /**
-     * Exportar datos a Excel
-     */
-    static async exportToExcel() {
-        try {
-            eventBus.emit(EVENTS.LOADING_START);
 
-            // Obtener datos de todos los modelos
-            const pdvs = await pdvModel.getAll();
-            const incidents = await incidentModel.getAll();
-            const actions = await actionModel.getAll();
-            const evidences = await evidenceModel.getAll();
+    // Mapa de variantes de nombres de columna → campo interno
+    static get COLUMN_MAP() {
+        return {
+            // Nro. Cliente
+            'nro. cliente':          'nroCliente',
+            'nro cliente':           'nroCliente',
+            'numero de cliente':     'nroCliente',
+            'número de cliente':     'nroCliente',
+            'numero cliente':        'nroCliente',
+            'número cliente':        'nroCliente',
+            'nro.cliente':           'nroCliente',
+            'nrocliente':            'nroCliente',
+            'cliente':               'nroCliente',
+            'cod. cliente':          'nroCliente',
+            'cod cliente':           'nroCliente',
+            'codigo cliente':        'nroCliente',
+            'código cliente':        'nroCliente',
 
-            // Crear libro de trabajo
-            const wb = XLSX.utils.book_new();
+            // Nombre PDV
+            'nombre pdv':                              'nombrePDV',
+            'nombre del pdv':                          'nombrePDV',
+            'nombre del punto de venta':               'nombrePDV',
+            'nombre del numero de punto de venta':     'nombrePDV',
+            'nombre del número de punto de venta':     'nombrePDV',
+            'nombrepdv':                               'nombrePDV',
+            'pdv':                                     'nombrePDV',
+            'nombre':                                  'nombrePDV',
+            'punto de venta':                          'nombrePDV',
+            'razon social':                            'nombrePDV',
+            'razón social':                            'nombrePDV',
 
-            // Hojas de datos
-            const pdvSheet = XLSX.utils.json_to_sheet(this._preparePDVData(pdvs));
-            const incidentSheet = XLSX.utils.json_to_sheet(this._prepareIncidentData(incidents));
-            const actionSheet = XLSX.utils.json_to_sheet(this._prepareActionData(actions));
-            const evidenceSheet = XLSX.utils.json_to_sheet(this._prepareEvidenceData(evidences));
+            // Dirección
+            'direccion':   'direccion',
+            'dirección':   'direccion',
+            'domicilio':   'direccion',
+            'dir.':        'direccion',
+            'dir':         'direccion',
+            'calle':       'direccion',
 
-            // Configurar ancho de columnas
-            this._setColumnWidths(pdvSheet, [15, 25, 30, 20, 20, 15, 12, 18]);
-            this._setColumnWidths(incidentSheet, [15, 25, 18, 15, 12, 15, 12, 15, 30, 18]);
-            this._setColumnWidths(actionSheet, [20, 30, 18, 20, 12, 30, 18]);
-            this._setColumnWidths(evidenceSheet, [15, 30, 30, 18, 12]);
+            // Inconveniente
+            'inconveniente':          'inconveniente',
+            'inconveniente ocurrido': 'inconveniente',
+            'inconvenientes':         'inconveniente',
+            'problema':               'inconveniente',
+            'problemas':              'inconveniente',
+            'incidente':              'inconveniente',
+            'descripcion':            'inconveniente',
+            'descripción':            'inconveniente',
+            'detalle':                'inconveniente',
 
-            // Agregar hojas al libro
-            XLSX.utils.book_append_sheet(wb, pdvSheet, "Puntos de Venta");
-            XLSX.utils.book_append_sheet(wb, incidentSheet, "Incidentes");
-            XLSX.utils.book_append_sheet(wb, actionSheet, "Acciones");
-            XLSX.utils.book_append_sheet(wb, evidenceSheet, "Evidencias");
+            // Soluciones
+            'solucion':    'soluciones',
+            'solución':    'soluciones',
+            'soluciones':  'soluciones',
+            'resolucion':  'soluciones',
+            'resolución':  'soluciones',
+            'accion':      'soluciones',
+            'acción':      'soluciones',
+            'acciones':    'soluciones',
+            'observacion': 'soluciones',
+            'observación': 'soluciones',
 
-            // Generar nombre de archivo
-            const filename = `pdvcritico_${DateUtils.format(new Date(), "YYYY-MM-DD_HH-mm")}.xlsx`;
-
-            // Descargar archivo
-            XLSX.writeFile(wb, filename);
-
-            logger.info("Archivo Excel exportado:", filename);
-            eventBus.emit(EVENTS.DATA_EXPORTED, { filename, records: pdvs.length + incidents.length });
-            eventBus.emit(EVENTS.LOADING_END);
-
-            return { success: true, filename };
-        } catch (error) {
-            logger.error("Error exportando Excel:", error);
-            eventBus.emit(EVENTS.LOADING_END);
-            throw error;
-        }
+            // Fecha
+            'fecha':            'fechaVisita',
+            'fecha visita':     'fechaVisita',
+            'fecha de visita':  'fechaVisita',
+            'fecha_visita':     'fechaVisita',
+        };
     }
 
     /**
-     * Importar datos desde Excel
+     * Importar visitas desde un archivo Excel.
+     * @param {File} file
+     * @returns {{ visitas: Array, errors: string[] }}
      */
-    static async importFromExcel(file) {
-        try {
-            eventBus.emit(EVENTS.LOADING_START);
-
-            const workbook = await this._readExcelFile(file);
-
-            let imported = {
-                pdvs: 0,
-                incidents: 0,
-                actions: 0,
-                evidences: 0
-            };
-
-            // Procesar hoja de PDV
-            if (workbook.Sheets["Puntos de Venta"]) {
-                const pdvData = XLSX.utils.sheet_to_json(workbook.Sheets["Puntos de Venta"]);
-                imported.pdvs = await this._importPDVData(pdvData);
-            }
-
-            // Procesar hoja de Incidentes
-            if (workbook.Sheets["Incidentes"]) {
-                const incidentData = XLSX.utils.sheet_to_json(workbook.Sheets["Incidentes"]);
-                imported.incidents = await this._importIncidentData(incidentData);
-            }
-
-            // Procesar hoja de Acciones
-            if (workbook.Sheets["Acciones"]) {
-                const actionData = XLSX.utils.sheet_to_json(workbook.Sheets["Acciones"]);
-                imported.actions = await this._importActionData(actionData);
-            }
-
-            logger.info("Datos importados desde Excel:", imported);
-            eventBus.emit(EVENTS.DATA_IMPORTED, imported);
-            eventBus.emit(EVENTS.LOADING_END);
-
-            return { success: true, imported };
-        } catch (error) {
-            logger.error("Error importando Excel:", error);
-            eventBus.emit(EVENTS.LOADING_END);
-            throw error;
-        }
-    }
-
-    /**
-     * Leer archivo Excel
-     */
-    static _readExcelFile(file) {
+    static importFromExcel(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
 
             reader.onload = (e) => {
                 try {
                     const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: "array" });
-                    resolve(workbook);
-                } catch (error) {
-                    reject(error);
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+
+                    // Usar la primera hoja disponible
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+                    const visitas = [];
+                    const errors  = [];
+
+                    rows.forEach((row, idx) => {
+                        // Omitir filas completamente vacías
+                        const hasContent = Object.values(row).some(v => String(v).trim() !== '');
+                        if (!hasContent) return;
+
+                        const mapped = ExcelManager._mapRow(row);
+
+                        if (!mapped.nroCliente && !mapped.nombrePDV) {
+                            errors.push(`Fila ${idx + 2}: sin número de cliente ni nombre de PDV — omitida`);
+                            return;
+                        }
+
+                        visitas.push(mapped);
+                    });
+
+                    resolve({ visitas, errors });
+                } catch (err) {
+                    reject(new Error('No se pudo leer el archivo. Verificá que sea un Excel válido (.xlsx / .xls).'));
                 }
             };
 
-            reader.onerror = () => {
-                reject(new Error("Error leyendo archivo"));
-            };
-
+            reader.onerror = () => reject(new Error('Error leyendo el archivo'));
             reader.readAsArrayBuffer(file);
         });
     }
 
     /**
-     * Preparar datos de PDV para exportar
+     * Mapea una fila del Excel a los campos internos de visita.
      */
-    static _preparePDVData(pdvs) {
-        return pdvs.map(pdv => ({
-            "Código": pdv.codigo,
-            "Nombre": pdv.nombre,
-            "Dirección": pdv.direccion,
-            "Responsable": pdv.responsable,
-            "Email": pdv.email,
-            "Teléfono": pdv.telefono,
-            "Estado": pdv.estado,
-            "Fecha Creación": DateUtils.format(pdv.fechaCreacion)
-        }));
-    }
+    static _mapRow(row) {
+        const result = {
+            nroCliente:    '',
+            nombrePDV:     '',
+            direccion:     '',
+            inconveniente: '',
+            soluciones:    '',
+            fechaVisita:   '',
+        };
 
-    /**
-     * Preparar datos de Incidentes para exportar
-     */
-    static _prepareIncidentData(incidents) {
-        return incidents.map(incident => ({
-            "ID PDV": incident.pdvId,
-            "Fecha Detección": DateUtils.format(incident.fechaDeteccion),
-            "Descripción": incident.descripcion,
-            "Categoría": incident.categoria,
-            "Criticidad": incident.criticidad,
-            "Estado": incident.estado,
-            "Responsable": incident.responsable,
-            "Comentarios": incident.comentarios,
-            "Fecha Actualización": DateUtils.format(incident.fechaActualizacion)
-        }));
-    }
-
-    /**
-     * Preparar datos de Acciones para exportar
-     */
-    static _prepareActionData(actions) {
-        return actions.map(action => ({
-            "ID Incidente": action.incidenteId,
-            "Descripción": action.descripcion,
-            "Fecha Implementación": DateUtils.format(action.fechaImplementacion),
-            "Responsable": action.responsable,
-            "Resultado": action.resultado,
-            "Observaciones": action.observaciones
-        }));
-    }
-
-    /**
-     * Preparar datos de Evidencias para exportar
-     */
-    static _prepareEvidenceData(evidences) {
-        return evidences.map(evidence => ({
-            "ID Incidente": evidence.incidenteId,
-            "Nombre": evidence.nombre,
-            "Descripción": evidence.descripcion,
-            "Fecha Carga": DateUtils.format(evidence.fechaCarga),
-            "Orden": evidence.orden
-        }));
-    }
-
-    /**
-     * Importar datos de PDV
-     */
-    static async _importPDVData(data) {
-        let count = 0;
-
-        for (const row of data) {
-            try {
-                if (!row["Código"] || !row["Nombre"]) continue;
-
-                await pdvModel.create({
-                    codigo: row["Código"],
-                    nombre: row["Nombre"],
-                    direccion: row["Dirección"] || "",
-                    responsable: row["Responsable"] || "",
-                    email: row["Email"] || "",
-                    telefono: row["Teléfono"] || "",
-                    estado: row["Estado"] || ENUMS.PDV_STATE.ACTIVO
-                });
-
-                count++;
-            } catch (error) {
-                logger.warn("Error importando PDV:", error);
+        for (const [col, value] of Object.entries(row)) {
+            const key = ExcelManager.COLUMN_MAP[col.toLowerCase().trim()];
+            if (key && value !== undefined && value !== null && value !== '') {
+                result[key] = String(value).trim();
             }
         }
 
-        return count;
-    }
-
-    /**
-     * Importar datos de Incidentes
-     */
-    static async _importIncidentData(data) {
-        let count = 0;
-
-        for (const row of data) {
-            try {
-                if (!row["ID PDV"] || !row["Descripción"]) continue;
-
-                await incidentModel.create({
-                    pdvId: row["ID PDV"],
-                    fechaDeteccion: new Date(row["Fecha Detección"]).toISOString(),
-                    descripcion: row["Descripción"],
-                    categoria: row["Categoría"] || ENUMS.INCIDENT_CATEGORY.OTRO,
-                    criticidad: row["Criticidad"] || ENUMS.CRITICALITY.MEDIA,
-                    estado: row["Estado"] || ENUMS.INCIDENT_STATE.ABIERTO,
-                    responsable: row["Responsable"] || "",
-                    comentarios: row["Comentarios"] || ""
-                });
-
-                count++;
-            } catch (error) {
-                logger.warn("Error importando Incidente:", error);
+        // Normalizar fecha de visita
+        if (result.fechaVisita) {
+            let parsed;
+            // SheetJS puede devolver un objeto Date si cellDates:true
+            if (result.fechaVisita instanceof Date) {
+                parsed = result.fechaVisita;
+            } else {
+                // Intentar parsear string (varios formatos)
+                const raw = String(result.fechaVisita).trim();
+                // DD/MM/YYYY → YYYY-MM-DD para que Date() lo entienda
+                const ddmmyyyy = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+                if (ddmmyyyy) {
+                    parsed = new Date(`${ddmmyyyy[3]}-${ddmmyyyy[2].padStart(2,'0')}-${ddmmyyyy[1].padStart(2,'0')}`);
+                } else {
+                    parsed = new Date(raw);
+                }
             }
+            result.fechaVisita = isNaN(parsed) ? new Date().toISOString() : parsed.toISOString();
+        } else {
+            result.fechaVisita = new Date().toISOString();
         }
 
-        return count;
+        return result;
     }
 
     /**
-     * Importar datos de Acciones
+     * Exportar todas las visitas a un archivo Excel.
+     * @param {Array} visitas
      */
-    static async _importActionData(data) {
-        let count = 0;
+    static exportToExcel(visitas) {
+        const data = visitas.map(v => ({
+            'Nro. Cliente':           v.nroCliente    || '',
+            'Nombre PDV':             v.nombrePDV     || '',
+            'Dirección':              v.direccion     || '',
+            'Inconveniente Ocurrido': v.inconveniente || '',
+            'Soluciones':             v.soluciones    || '',
+            'Fecha Visita':           v.fechaVisita
+                                        ? DateUtils.format(v.fechaVisita)
+                                        : '',
+        }));
 
-        for (const row of data) {
-            try {
-                if (!row["ID Incidente"] || !row["Descripción"]) continue;
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(data);
+        ws['!cols'] = [
+            { wch: 15 }, // Nro. Cliente
+            { wch: 25 }, // Nombre PDV
+            { wch: 30 }, // Dirección
+            { wch: 45 }, // Inconveniente
+            { wch: 45 }, // Soluciones
+            { wch: 14 }, // Fecha
+        ];
 
-                await actionModel.create({
-                    incidenteId: row["ID Incidente"],
-                    descripcion: row["Descripción"],
-                    fechaImplementacion: new Date(row["Fecha Implementación"]).toISOString(),
-                    responsable: row["Responsable"] || "",
-                    resultado: row["Resultado"] || ENUMS.ACTION_RESULT.EXITOSA,
-                    observaciones: row["Observaciones"] || ""
-                });
+        XLSX.utils.book_append_sheet(wb, ws, 'Visitas PDV');
 
-                count++;
-            } catch (error) {
-                logger.warn("Error importando Acción:", error);
-            }
-        }
+        const filename = `visitas_pdv_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        XLSX.writeFile(wb, filename);
 
-        return count;
+        return { filename, records: visitas.length };
     }
 
     /**
-     * Establecer ancho de columnas
+     * Descargar plantilla Excel con las columnas correctas y una fila de ejemplo.
      */
-    static _setColumnWidths(sheet, widths) {
-        sheet["!cols"] = widths.map(w => ({ wch: w }));
+    static downloadTemplate() {
+        const data = [{
+            'Nro. Cliente':           '12345',
+            'Nombre PDV':             'PDV Tucumán Centro',
+            'Dirección':              'Av. Principal 123, Tucumán',
+            'Inconveniente Ocurrido': 'Descripción del inconveniente ocurrido en el punto de venta',
+            'Soluciones':             'Acciones realizadas para resolver el inconveniente',
+            'Fecha Visita':           DateUtils.format(new Date()),
+        }];
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(data);
+        ws['!cols'] = [
+            { wch: 15 },
+            { wch: 25 },
+            { wch: 30 },
+            { wch: 45 },
+            { wch: 45 },
+            { wch: 14 },
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, 'Visitas PDV');
+        XLSX.writeFile(wb, 'plantilla_visitas_pdv.xlsx');
     }
 }

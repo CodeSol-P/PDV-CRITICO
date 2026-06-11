@@ -3,141 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Sistema de Gestión de Puntos de Venta Críticos - PDV Crítico">
-    <title>PDV Crítico - Gestión de Puntos de Venta</title>
-    
-    <!-- Material Icons -->
+    <title>PDV Crítico - Registro de Visitas</title>
+
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    
-    <!-- Roboto Font (Material Design) -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    
-    <!-- CSS Principal -->
+
     <link rel="stylesheet" href="css/variables.css">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
     <div id="app-container" class="app-layout">
-        
+
         <!-- Header -->
         <header class="app-header">
             <div class="header-content">
                 <h1 class="app-title">
-                    <span class="material-icons">dashboard</span>
+                    <span class="material-icons">store</span>
                     PDV Crítico
                 </h1>
-                <p class="app-subtitle">Gestión de Puntos de Venta Críticos Cargo</p>
+                <p class="app-subtitle">Registro de Visitas a Puntos de Venta · Grupo Cargo SA</p>
             </div>
             <div class="header-actions">
-                <button id="sync-btn" class="btn btn-icon" title="Sincronizar con Excel">
-                    <span class="material-icons">sync</span>
+                <button id="btn-template" class="btn btn-icon" title="Descargar plantilla Excel">
+                    <span class="material-icons">file_download</span>
                 </button>
-                <button id="settings-btn" class="btn btn-icon" title="Configuración">
-                    <span class="material-icons">settings</span>
+                <button id="btn-export" class="btn btn-icon" title="Exportar registros a Excel">
+                    <span class="material-icons">cloud_download</span>
                 </button>
+                <button id="btn-import" class="btn btn-icon" title="Importar desde Excel (requiere autorización)">
+                    <span class="material-icons">upload_file</span>
+                </button>
+                <input type="file" id="file-import-excel" accept=".xlsx,.xls" style="display:none;">
             </div>
         </header>
 
-        <!-- Navigation Tabs -->
-        <nav class="nav-tabs">
-            <button class="tab-btn active" data-view="dashboard" title="Dashboard">
-                <span class="material-icons">bar_chart</span>
-                <span>Dashboard</span>
-            </button>
-            <button class="tab-btn" data-view="pdv" title="Puntos de Venta">
-                <span class="material-icons">store</span>
-                <span>PDV</span>
-            </button>
-        </nav>
+        <!-- Toolbar -->
+        <div class="nav-tabs" style="justify-content: space-between; padding: 0 24px; flex-wrap: wrap; gap: 8px;">
+            <div style="display:flex; gap:12px; align-items:center;">
+                <button id="btn-add-visita" class="btn btn-primary">
+                    <span class="material-icons">add</span>
+                    Nuevo Registro
+                </button>
+                <span id="record-count" style="font-size:13px; color:#666;"></span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="search-input" class="search-input"
+                       placeholder="Buscar por cliente, PDV, dirección..."
+                       style="min-width:280px;">
+            </div>
+        </div>
 
-        <!-- Main Content -->
+        <!-- Leyenda de botones de cabecera -->
+        <div style="background:#F3F4F6; border-bottom:1px solid #e0e0e0; padding:6px 24px; display:flex; gap:24px; font-size:12px; color:#666;">
+            <span><span class="material-icons" style="font-size:14px; vertical-align:middle;">file_download</span> Plantilla</span>
+            <span><span class="material-icons" style="font-size:14px; vertical-align:middle;">cloud_download</span> Exportar Excel</span>
+            <span><span class="material-icons" style="font-size:14px; vertical-align:middle;">upload_file</span> Importar Excel</span>
+        </div>
+
+        <!-- Contenido principal -->
         <main class="main-content">
-            <!-- Dashboard View -->
-            <section id="dashboard-view" class="view active">
-                <div id="dashboard-container"></div>
-            </section>
-
-            <!-- PDV View -->
-            <section id="pdv-view" class="view">
-                <div class="view-header">
-                    <h2>Puntos de Venta</h2>
-                    <button id="btn-add-pdv" class="btn btn-primary">
-                        <span class="material-icons">add</span>
-                        Nuevo PDV
-                    </button>
-                    <button id="btn-back-pdv-list" class="btn btn-outline" style="display: none;">
-                        <span class="material-icons">arrow_back</span>
-                        Volver a PDV
-                    </button>
-                </div>
-                <div class="view-filters">
-                    <input type="text" id="pdv-search" class="search-input" placeholder="Buscar PDV...">
-                    <select id="pdv-filter-state" class="filter-select">
-                        <option value="">Todos los estados</option>
-                        <option value="Activo">Activo</option>
-                        <option value="Inactivo">Inactivo</option>
-                    </select>
-                </div>
-                
-                <!-- PDV List -->
-                <div id="pdv-list-section" class="table-container"></div>
-                
-                <!-- PDV Details with Incidents -->
-                <div id="pdv-detail-section" style="display: none;">
-                    <div class="card" style="margin-bottom: 20px;">
-                        <h3 id="pdv-detail-name"></h3>
-                        <table style="width: 100%; font-size: 13px;">
-                            <tr><td style="font-weight: bold; width: 30%;">Código:</td><td id="pdv-detail-codigo"></td></tr>
-                            <tr><td style="font-weight: bold;">Dirección:</td><td id="pdv-detail-direccion"></td></tr>
-                            <tr><td style="font-weight: bold;">Responsable:</td><td id="pdv-detail-responsable"></td></tr>
-                            <tr><td style="font-weight: bold;">Email:</td><td id="pdv-detail-email"></td></tr>
-                            <tr><td style="font-weight: bold;">Teléfono:</td><td id="pdv-detail-telefono"></td></tr>
-                        </table>
-                    </div>
-                    
-                    <!-- Incidents of this PDV -->
-                    <div class="card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                            <h4>Incidentes Registrados</h4>
-                            <button id="btn-add-incident" class="btn btn-sm btn-primary">
-                                <span class="material-icons">add</span>
-                                Nuevo Incidente
-                            </button>
-                        </div>
-                        <div id="incidents-of-pdv" class="table-container"></div>
-                    </div>
-                </div>
-                
-                <!-- Incident Details with Actions -->
-                <div id="incident-detail-section" style="display: none;">
-                    <div class="card" style="margin-bottom: 20px;">
-                        <h3>Detalles del Incidente</h3>
-                        <table style="width: 100%; font-size: 13px; margin-bottom: 15px;">
-                            <tr><td style="font-weight: bold; width: 30%;">Fecha:</td><td id="incident-detail-fecha"></td></tr>
-                            <tr><td style="font-weight: bold;">Descripción:</td><td id="incident-detail-descripcion"></td></tr>
-                            <tr><td style="font-weight: bold;">Categoría:</td><td id="incident-detail-categoria"></td></tr>
-                            <tr><td style="font-weight: bold;">Criticidad:</td><td id="incident-detail-criticidad"></td></tr>
-                            <tr><td style="font-weight: bold;">Estado:</td><td id="incident-detail-estado"></td></tr>
-                        </table>
-                        
-                        <!-- Evidences Gallery -->
-                        <h5>Evidencias</h5>
-                        <div id="incident-evidences" class="image-gallery"></div>
-                    </div>
-                    
-                    <!-- Actions for this Incident -->
-                    <div class="card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                            <h4>Acciones Implementadas</h4>
-                            <button id="btn-add-action" class="btn btn-sm btn-primary">
-                                <span class="material-icons">add</span>
-                                Nueva Acción
-                            </button>
-                        </div>
-                        <div id="actions-of-incident" class="table-container"></div>
-                    </div>
-                </div>
+            <section id="visitas-view" class="view active">
+                <div id="visitas-list" class="table-container"></div>
             </section>
         </main>
 
@@ -148,65 +75,49 @@
         <div id="toast-container" class="toast-container"></div>
 
         <!-- Loading Overlay -->
-        <div id="loading-overlay" class="loading-overlay">
+        <div id="loading-overlay" class="loading-overlay active">
             <div class="spinner"></div>
         </div>
+
     </div>
 
-    <!-- External Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <!-- Librerías externas -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/uuid@9.0.1/dist/umd/uuidv4.min.js"></script>
 
-    <!-- Configuration -->
+    <!-- Configuración -->
     <script src="js/config.js"></script>
 
-    <!-- Utilities -->
+    <!-- Utilidades -->
     <script src="js/utils/Logger.js"></script>
     <script src="js/utils/DateUtils.js"></script>
     <script src="js/utils/FileUtils.js"></script>
     <script src="js/utils/ValidationUtils.js"></script>
     <script src="js/utils/FormatUtils.js"></script>
 
-    <!-- Storage & Database -->
+    <!-- Storage -->
     <script src="js/storage/IndexedDBManager.js"></script>
     <script src="js/storage/ExcelManager.js"></script>
-    <script src="js/storage/SyncService.js"></script>
-    <script src="js/storage/StorageFactory.js"></script>
 
-    <!-- Services -->
+    <!-- Servicios -->
     <script src="js/services/EventBus.js"></script>
 
-    <!-- Models -->
+    <!-- Modelos -->
     <script src="js/models/BaseModel.js"></script>
-    <script src="js/models/PDVModel.js"></script>
-    <script src="js/models/IncidentModel.js"></script>
-    <script src="js/models/ActionModel.js"></script>
-    <script src="js/models/EvidenceModel.js"></script>
+    <script src="js/models/VisitaModel.js"></script>
 
-    <!-- Views -->
+    <!-- Vistas -->
     <script src="js/views/BaseView.js"></script>
     <script src="js/views/ModalView.js"></script>
-    <script src="js/views/PDVView.js"></script>
-    <!-- Views for Incidents and Actions are now integrated in PDVView for hierarchical navigation -->
-    <!-- <script src="js/views/IncidentView.js"></script>
-    <script src="js/views/ActionView.js"></script> -->
-    <script src="js/views/DashboardView.js"></script>
+    <script src="js/views/VisitaView.js"></script>
 
-    <!-- Auth Service (requiere ModalView y AUTH_USERS de config.js) -->
+    <!-- Auth Service (requiere ModalView) -->
     <script src="js/services/AuthService.js"></script>
 
-    <!-- Controllers -->
-    <script src="js/controllers/PDVController.js"></script>
-    <!-- Controllers for Incidents and Actions are now integrated in PDVController for hierarchical navigation -->
-    <!-- <script src="js/controllers/IncidentController.js"></script>
-    <script src="js/controllers/ActionController.js"></script> -->
-    <script src="js/controllers/DashboardController.js"></script>
+    <!-- Controladores -->
+    <script src="js/controllers/VisitaController.js"></script>
 
-    <!-- Main Application -->
+    <!-- App principal -->
     <script src="js/main.js"></script>
-
-</body>
-</html>
 </body>
 </html>
