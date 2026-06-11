@@ -83,6 +83,15 @@ class VisitaView extends BaseView {
                         ${v.fechaVisita ? DateUtils.format(v.fechaVisita) : '-'}
                     </td>
                     <td style="text-align:center; white-space:nowrap;">
+                        ${v.imagenes && v.imagenes.length > 0
+                            ? `<span title="${v.imagenes.length} imagen${v.imagenes.length > 1 ? 'es' : ''}"
+                                    style="display:inline-flex; align-items:center; gap:2px;
+                                           background:#E3F2FD; color:#1565C0; border-radius:10px;
+                                           padding:2px 7px; font-size:11px; margin-right:4px; vertical-align:middle;">
+                                <span class="material-icons" style="font-size:13px;">photo_camera</span>
+                                ${v.imagenes.length}
+                               </span>`
+                            : ''}
                         <button class="btn btn-sm btn-primary btn-view" data-id="${v.id}" title="Ver detalle completo">
                             <span class="material-icons">visibility</span>
                         </button>

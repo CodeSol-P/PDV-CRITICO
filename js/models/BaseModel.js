@@ -13,7 +13,7 @@ class BaseModel {
      * Generar ID único
      */
     static generateId() {
-        return uuid.v4();
+        return crypto.randomUUID();
     }
 
     /**
