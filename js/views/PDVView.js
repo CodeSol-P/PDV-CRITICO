@@ -432,28 +432,3 @@ class PDVView extends BaseView {
 }
 
 const pdvView = new PDVView();
-                                <div style="font-size: 12px; color: #FF9800; font-weight: bold;">ABIERTOS</div>
-                                <div style="font-size: 24px; font-weight: bold; color: #FF9800;">${stats.openIncidents}</div>
-                            </div>
-                            <div style="padding: 10px; background: #E8F5E9; border-radius: 4px;">
-                                <div style="font-size: 12px; color: #4CAF50; font-weight: bold;">CERRADOS</div>
-                                <div style="font-size: 24px; font-weight: bold; color: #4CAF50;">${stats.closedIncidents}</div>
-                            </div>
-                            <div style="padding: 10px; background: #FFEBEE; border-radius: 4px;">
-                                <div style="font-size: 12px; color: #F44336; font-weight: bold;">CRÍTICOS</div>
-                                <div style="font-size: 24px; font-weight: bold; color: #F44336;">${stats.highCritical}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            ModalView.openInfo(`Detalles de ${pdv.nombre}`, html);
-        } catch (error) {
-            logger.error("Error mostrando detalles:", error);
-            this.showToast("Error al cargar detalles", "error");
-        }
-    }
-}
-
-const pdvView = new PDVView();
