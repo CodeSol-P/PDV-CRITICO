@@ -160,10 +160,8 @@ class VisitaView extends BaseView {
                 <div class="pdv-card__actions">
                     <button class="btn btn-sm btn-secondary btn-edit"
                             data-id="${v.id}"
-                            title="Editar"
-                            style="flex:1;">
+                            title="Editar">
                         <span class="material-icons">edit</span>
-                        Editar
                     </button>
                     <button class="btn btn-sm btn-danger btn-delete"
                             data-id="${v.id}"
@@ -192,10 +190,12 @@ class VisitaView extends BaseView {
             });
         });
 
-        // Editar
+        // Editar — requiere autenticación
         container.querySelectorAll('.btn-edit').forEach(btn => {
             this.addListener(btn, 'click', () => {
-                eventBus.emit('visita:edit', { id: btn.dataset.id });
+                authService.requireAuth('Editar Registro', () => {
+                    eventBus.emit('visita:edit', { id: btn.dataset.id });
+                });
             });
         });
 

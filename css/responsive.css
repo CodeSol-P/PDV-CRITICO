@@ -95,6 +95,15 @@
     }
 }
 
+/* Tarjetas PDV en tablet (768px) — mínimo 2 columnas */
+@media (max-width: 768px) {
+    .pdv-card-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+        padding: 14px;
+    }
+}
+
 /* Teléfonos pequeños (480px) */
 @media (max-width: 480px) {
     :root {
@@ -165,6 +174,32 @@
 
     .card-value {
         font-size: var(--font-size-2xl);
+    }
+
+    /* Tarjetas PDV en móvil: 2 columnas compactas */
+    .pdv-card-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 0;          /* el padding lo da .main-content */
+    }
+
+    .pdv-card__image--placeholder .material-icons {
+        font-size: 40px;
+    }
+
+    .pdv-card__body        { padding: 10px; }
+    .pdv-card__nombre      { font-size: 13px; }
+    .pdv-card__meta        { gap: 4px; flex-wrap: wrap; }
+    .pdv-card__codigo      { font-size: 11px; padding: 1px 6px; }
+    .pdv-card__fecha       { font-size: 11px; }
+    .pdv-card__direccion   { font-size: 11px; }
+    .pdv-card__inconveniente { font-size: 12px; }
+    .pdv-card__inconv-label  { font-size: 9px; }
+
+    /* Evitar que los botones de la tarjeta hereden width:100% */
+    .pdv-card__actions .btn {
+        width: auto !important;
+        padding: 6px 10px;
     }
 }
 
