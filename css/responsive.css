@@ -1,0 +1,281 @@
+/* 
+ * responsive.css
+ * Media queries para diseño responsive (mobile-first)
+ */
+
+/* Tablets pequeñas (768px) */
+@media (max-width: 768px) {
+    .app-header {
+        flex-direction: column;
+        gap: var(--spacing-md);
+        text-align: center;
+    }
+
+    .header-content {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .nav-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .tab-btn {
+        flex: 0 1 auto;
+        min-width: 120px;
+        font-size: var(--font-size-sm);
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .tab-btn span:last-child {
+        display: none;
+    }
+
+    .main-content {
+        padding: var(--spacing-md);
+    }
+
+    .view-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .view-header h2 {
+        margin-bottom: var(--spacing-md);
+        width: 100%;
+    }
+
+    .view-header button {
+        width: 100%;
+    }
+
+    .view-filters {
+        flex-direction: column;
+    }
+
+    .search-input,
+    .filter-select {
+        width: 100%;
+        min-width: unset;
+    }
+
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+        grid-template-columns: 1fr;
+    }
+
+    .modal {
+        width: 95%;
+        max-height: 95vh;
+    }
+
+    .toast-container {
+        left: var(--spacing-md);
+        right: var(--spacing-md);
+        bottom: var(--spacing-md);
+    }
+
+    .toast {
+        min-width: unset;
+    }
+
+    table {
+        font-size: var(--font-size-xs);
+    }
+
+    th,
+    td {
+        padding: var(--spacing-sm);
+    }
+
+    .image-gallery {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+}
+
+/* Teléfonos pequeños (480px) */
+@media (max-width: 480px) {
+    :root {
+        --spacing-lg: 16px;
+        --spacing-md: 12px;
+        --font-size-xl: 18px;
+    }
+
+    .app-title {
+        font-size: var(--font-size-xl);
+    }
+
+    .app-title .material-icons {
+        font-size: 24px;
+    }
+
+    .tab-btn {
+        min-width: 100px;
+        font-size: var(--font-size-xs);
+    }
+
+    .btn {
+        width: 100%;
+        padding: var(--spacing-md);
+    }
+
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger,
+    .btn-success {
+        width: 100%;
+    }
+
+    .modal-footer {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    .modal-footer .btn {
+        width: 100%;
+    }
+
+    .grid {
+        gap: var(--spacing-md);
+    }
+
+    .form-group {
+        margin-bottom: var(--spacing-md);
+    }
+
+    .view-filters {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    .search-input,
+    .filter-select {
+        width: 100%;
+    }
+
+    .image-gallery {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    }
+
+    .card {
+        padding: var(--spacing-md);
+    }
+
+    .card-value {
+        font-size: var(--font-size-2xl);
+    }
+}
+
+/* Orientación Landscape */
+@media (orientation: landscape) and (max-height: 500px) {
+    .app-header {
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .app-title {
+        font-size: var(--font-size-lg);
+    }
+
+    .app-subtitle {
+        display: none;
+    }
+
+    .nav-tabs {
+        gap: 0;
+    }
+
+    .tab-btn {
+        padding: var(--spacing-sm);
+    }
+
+    .main-content {
+        padding: var(--spacing-sm);
+    }
+
+    .view-header {
+        padding: var(--spacing-sm);
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .view-header h2 {
+        font-size: var(--font-size-lg);
+    }
+
+    table {
+        font-size: var(--font-size-xs);
+    }
+
+    th,
+    td {
+        padding: 4px 8px;
+    }
+}
+
+/* Pantallas grandes (1200px) */
+@media (min-width: 1200px) {
+    .main-content {
+        padding: var(--spacing-xl);
+    }
+
+    .grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .grid-3 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .grid-4 {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .modal {
+        max-width: 800px;
+    }
+
+    .image-gallery {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    }
+}
+
+/* Impresión */
+@media print {
+    .app-header,
+    .nav-tabs,
+    .header-actions,
+    .view-header button,
+    .modal-overlay,
+    .toast-container,
+    .loading-overlay {
+        display: none !important;
+    }
+
+    body {
+        background-color: white;
+    }
+
+    .main-content {
+        padding: 0;
+    }
+
+    table {
+        page-break-inside: avoid;
+    }
+
+    tr {
+        page-break-inside: avoid;
+    }
+}
+
+/* Preferencia de animaciones reducidas */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
