@@ -187,6 +187,7 @@ class ExcelManager {
             'Dirección':              v.direccion     || '',
             'Inconveniente Ocurrido': v.inconveniente || '',
             'Soluciones':             v.soluciones    || '',
+            'Estado':                 v.estado === 'cerrado' ? 'Cerrado' : 'En progreso',
             'Fecha Visita':           v.fechaVisita
                                         ? DateUtils.format(v.fechaVisita)
                                         : '',
@@ -200,6 +201,7 @@ class ExcelManager {
             { wch: 30 }, // Dirección
             { wch: 45 }, // Inconveniente
             { wch: 45 }, // Soluciones
+            { wch: 14 }, // Estado
             { wch: 14 }, // Fecha
         ];
 
@@ -221,6 +223,7 @@ class ExcelManager {
             'Dirección':              'Av. Principal 123, Tucumán',
             'Inconveniente Ocurrido': 'Descripción del inconveniente ocurrido en el punto de venta',
             'Soluciones':             'Acciones realizadas para resolver el inconveniente',
+            'Estado':                 'En progreso',
             'Fecha Visita':           DateUtils.format(new Date()),
         }];
 
@@ -232,6 +235,7 @@ class ExcelManager {
             { wch: 30 },
             { wch: 45 },
             { wch: 45 },
+            { wch: 14 },
             { wch: 14 },
         ];
 

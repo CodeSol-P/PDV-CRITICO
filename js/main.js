@@ -16,8 +16,9 @@ class App {
             await db.init();
             logger.info('Base de datos lista');
 
-            // Conectar botones
+            // Conectar botones y tabs
             this._setupButtons();
+            this._setupTabs();
 
             // Renderizar tabla inicial
             await visitaView.render();
@@ -29,11 +30,44 @@ class App {
             logger.error('Error iniciando la aplicación:', error);
             this._showInitError(error.message);
         } finally {
-            // Ocultar spinner inicial
             const overlay = document.getElementById('loading-overlay');
             if (overlay) overlay.classList.remove('active');
         }
     }
+
+    // ── Tabs ───────────────────────────────────────────────────────────────────
+
+    _setupTabs() {
+        const tabRegistros = document.getElementById('tab-registros');
+        const tabDashboard = document.getElementById('tab-dashboard');
+
+        if (tabRegistros) tabRegistros.addEventListener('click', () => this._switchTab('registros'));
+        if (tabDashboard) tabDashboard.addEventListener('click', () => this._switchTab('dashboard'));
+    }
+
+    _switchTab(name) {
+        ['registros', 'dashboard'].forEach(t => {
+            const btn = document.getElementById(`tab-${t}`);
+            if (btn) btn.classList.toggle('active', t === name);
+        });
+
+        const viewRegistros = document.getElementById('visitas-view');
+        const viewDashboard = document.getElementById('dashboard-view');
+        if (viewRegistros) viewRegistros.classList.toggle('active', name === 'registros');
+        if (viewDashboard) viewDashboard.classList.toggle('active', name === 'dashboard');
+
+        const showToolbar = name === 'registros';
+        const toolbar = document.getElementById('toolbar-registros');
+        const legend  = document.getElementById('legend-registros');
+        if (toolbar) toolbar.style.display = showToolbar ? '' : 'none';
+        if (legend)  legend.style.display  = showToolbar ? '' : 'none';
+
+        if (name === 'dashboard') {
+            dashboardController.renderDashboard();
+        }
+    }
+
+    // ── Botones ────────────────────────────────────────────────────────────────
 
     _setupButtons() {
 
@@ -100,7 +134,7 @@ class App {
                     visitaView.showToast(error.message || 'Error al importar el archivo', 'error');
                 } finally {
                     visitaView.hideLoading();
-                    fileInput.value = ''; // Permitir volver a importar el mismo archivo
+                    fileInput.value = '';
                 }
             });
         }
@@ -160,13 +194,17 @@ class App {
                     }
 
                     const all      = await visitaModel.getAll();
-                    const filtered = all.filter(v =>
-                        (v.nroCliente    || '').toLowerCase().includes(query) ||
-                        (v.nombrePDV     || '').toLowerCase().includes(query) ||
-                        (v.direccion     || '').toLowerCase().includes(query) ||
-                        (v.inconveniente || '').toLowerCase().includes(query) ||
-                        (v.soluciones    || '').toLowerCase().includes(query)
-                    );
+                    const filtered = all.filter(v => {
+                        const estadoLabel = v.estado === 'cerrado' ? 'cerrado' : 'en progreso';
+                        return (
+                            (v.nroCliente    || '').toLowerCase().includes(query) ||
+                            (v.nombrePDV     || '').toLowerCase().includes(query) ||
+                            (v.direccion     || '').toLowerCase().includes(query) ||
+                            (v.inconveniente || '').toLowerCase().includes(query) ||
+                            (v.soluciones    || '').toLowerCase().includes(query) ||
+                            estadoLabel.includes(query)
+                        );
+                    });
 
                     await visitaView.render(filtered);
                 }, 200);

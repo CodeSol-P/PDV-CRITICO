@@ -136,6 +136,9 @@ class VisitaView extends BaseView {
                     ${v.fechaVisita
                         ? `<span class="pdv-card__fecha">${DateUtils.format(v.fechaVisita)}</span>`
                         : ''}
+                    <span class="estado-badge estado-badge--${v.estado || 'en_progreso'}">
+                        ${v.estado === 'cerrado' ? 'Cerrado' : 'En progreso'}
+                    </span>
                 </div>
 
                 ${v.direccion ? `

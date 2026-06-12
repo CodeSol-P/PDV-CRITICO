@@ -64,6 +64,14 @@ class VisitaController {
                     placeholder="Describí las acciones realizadas para resolver...">${this._esc(v.soluciones || '')}</textarea>
             </div>
 
+            <div class="form-group required">
+                <label>Estado de la Acción</label>
+                <select name="estado">
+                    <option value="en_progreso" ${(!v.estado || v.estado === 'en_progreso') ? 'selected' : ''}>En progreso</option>
+                    <option value="cerrado" ${v.estado === 'cerrado' ? 'selected' : ''}>Cerrado</option>
+                </select>
+            </div>
+
             <!-- Sección de imágenes -->
             <div class="form-group">
                 <label>Imágenes</label>
@@ -313,6 +321,7 @@ class VisitaController {
                     ${fila('Fecha de Visita',        v.fechaVisita ? DateUtils.format(v.fechaVisita) : '')}
                     ${fila('Inconveniente Ocurrido', v.inconveniente)}
                     ${fila('Soluciones',             v.soluciones)}
+                    ${fila('Estado',                 v.estado === 'cerrado' ? 'Cerrado' : 'En progreso')}
                 </table>
                 ${galeriaHTML}
             </div>`;

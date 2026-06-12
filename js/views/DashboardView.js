@@ -1,265 +1,311 @@
 /**
  * DashboardView.js
- * Vista del Dashboard con métricas y gráficos
+ * Dashboard de métricas y gráficos basado en registros de visitas PDV.
  */
 
-class DashboardView extends BaseView {
+class DashboardView {
     constructor() {
-        super("dashboard-view");
+        this.charts = {};
+    }
+
+    destroy() {
+        Object.values(this.charts).forEach(c => {
+            try { c.destroy(); } catch (e) {}
+        });
         this.charts = {};
     }
 
     async render() {
-        const container = this.getContainer();
-        container.innerHTML = `<div id="dashboard-container"></div>`;
+        const container = document.getElementById('dashboard-view');
+        if (!container) return;
 
-        // Renderizar dashboard
-        const dashboardContainer = container.querySelector("#dashboard-container");
-        dashboardContainer.innerHTML = this._buildLayout();
-
-        // Cargar datos y renderizar gráficos
-        await this.loadData();
+        this.destroy();
+        container.innerHTML = this._buildLayout();
+        await this._loadData();
     }
 
     _buildLayout() {
         return `
-            <div style="max-width: 1400px; margin: 0 auto;">
-                <!-- Métricas -->
-                <div class="grid grid-4 mb-lg">
-                    <div class="card text-center">
-                        <div class="card-title">Total PDV</div>
-                        <div class="card-value" id="metric-pdv">0</div>
-                    </div>
-                    <div class="card text-center">
-                        <div class="card-title">Incidentes Abiertos</div>
-                        <div class="card-value" id="metric-open" style="color: #F44336;">0</div>
-                    </div>
-                    <div class="card text-center">
-                        <div class="card-title">Incidentes Cerrados</div>
-                        <div class="card-value" id="metric-closed" style="color: #4CAF50;">0</div>
-                    </div>
-                    <div class="card text-center">
-                        <div class="card-title">Tasa Resolución</div>
-                        <div class="card-value" id="metric-rate" style="color: #1976D2;">0%</div>
-                    </div>
-                </div>
+        <div style="max-width:1200px; margin:0 auto;">
 
-                <!-- Gráficos -->
-                <div class="grid grid-2 mb-lg">
-                    <div class="card">
-                        <h4>Incidentes por Criticidad</h4>
-                        <canvas id="chart-criticality" height="200"></canvas>
-                    </div>
-                    <div class="card">
-                        <h4>Estado de Incidentes</h4>
-                        <canvas id="chart-state" height="200"></canvas>
-                    </div>
+            <!-- Métricas -->
+            <div class="grid grid-4 mb-lg">
+                <div class="card text-center">
+                    <div class="card-title">Total Registros</div>
+                    <div class="card-value" id="dash-total" style="color:#1976D2;">—</div>
+                    <div class="card-subtitle">PDVs levantados</div>
                 </div>
-
-                <div class="grid grid-2 mb-lg">
-                    <div class="card">
-                        <h4>Incidentes por Mes</h4>
-                        <canvas id="chart-monthly" height="200"></canvas>
-                    </div>
-                    <div class="card">
-                        <h4>Top 5 PDV con Problemas</h4>
-                        <canvas id="chart-top-pdv" height="200"></canvas>
-                    </div>
+                <div class="card text-center">
+                    <div class="card-title">En Progreso</div>
+                    <div class="card-value" id="dash-en-progreso" style="color:#FF9800;">—</div>
+                    <div class="card-subtitle">Acciones pendientes</div>
                 </div>
-
-                <!-- Tabla de incidentes recientes -->
-                <div class="card">
-                    <h4>Incidentes Recientes</h4>
-                    <div id="recent-incidents"></div>
+                <div class="card text-center">
+                    <div class="card-title">Cerrados</div>
+                    <div class="card-value" id="dash-cerrados" style="color:#4CAF50;">—</div>
+                    <div class="card-subtitle">Acciones resueltas</div>
+                </div>
+                <div class="card text-center">
+                    <div class="card-title">Tasa de Resolución</div>
+                    <div class="card-value" id="dash-tasa" style="color:#9C27B0;">—</div>
+                    <div class="card-subtitle">Porcentaje cerrados</div>
                 </div>
             </div>
-        `;
+
+            <!-- Gráficos principales -->
+            <div class="grid grid-2 mb-lg">
+                <div class="card">
+                    <h4 style="margin:0 0 16px; font-size:15px; color:#333;">PDVs Levantados por Mes</h4>
+                    <div style="position:relative; height:220px;">
+                        <canvas id="dash-chart-monthly"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h4 style="margin:0 0 16px; font-size:15px; color:#333;">Estado de Acciones</h4>
+                    <div style="position:relative; height:220px;">
+                        <canvas id="dash-chart-estado"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top PDVs -->
+            <div class="card mb-lg">
+                <h4 style="margin:0 0 16px; font-size:15px; color:#333;">Top 5 PDVs con más Visitas</h4>
+                <div style="position:relative; height:200px;">
+                    <canvas id="dash-chart-top"></canvas>
+                </div>
+            </div>
+
+            <!-- Últimos registros -->
+            <div class="card">
+                <h4 style="margin:0 0 16px; font-size:15px; color:#333;">Últimos 5 Registros</h4>
+                <div id="dash-recent"></div>
+            </div>
+
+        </div>`;
     }
 
-    async loadData() {
+    async _loadData() {
         try {
-            // Cargar estadísticas
-            const pdvCount = await db.count(APP_CONFIG.stores.pdv);
-            const incidentStats = await incidentModel.getStats();
-            const allIncidents = await incidentModel.getAll();
+            const visitas = await visitaModel.getAll();
 
-            // Actualizar métricas
-            document.getElementById("metric-pdv").textContent = pdvCount;
-            document.getElementById("metric-open").textContent = incidentStats.abiertos;
-            document.getElementById("metric-closed").textContent = incidentStats.cerrados;
+            const total      = visitas.length;
+            const cerrados   = visitas.filter(v => v.estado === 'cerrado').length;
+            const enProgreso = total - cerrados;
+            const tasa       = total > 0 ? Math.round((cerrados / total) * 100) : 0;
 
-            const rate = incidentStats.total > 0 
-                ? Math.round((incidentStats.cerrados / incidentStats.total) * 100)
-                : 0;
-            document.getElementById("metric-rate").textContent = rate + "%";
+            document.getElementById('dash-total').textContent       = total;
+            document.getElementById('dash-en-progreso').textContent = enProgreso;
+            document.getElementById('dash-cerrados').textContent    = cerrados;
+            document.getElementById('dash-tasa').textContent        = tasa + '%';
 
-            // Gráfico: Criticidad
-            this._createCriticalityChart(incidentStats);
+            if (total === 0) {
+                this._showEmpty();
+                return;
+            }
 
-            // Gráfico: Estado
-            this._createStateChart(incidentStats);
+            this._createMonthlyChart(visitas);
+            this._createEstadoChart(enProgreso, cerrados);
+            this._createTopPDVChart(visitas);
 
-            // Gráfico: Incidentes por mes
-            this._createMonthlyChart(allIncidents);
+            const sorted = visitas
+                .slice()
+                .sort((a, b) => new Date(b.fechaVisita) - new Date(a.fechaVisita));
+            this._showRecentVisitas(sorted.slice(0, 5));
 
-            // Gráfico: Top PDV
-            await this._createTopPDVChart();
-
-            // Tabla de incidentes recientes
-            this._showRecentIncidents(allIncidents.slice(-5).reverse());
         } catch (error) {
-            logger.error("Error cargando dashboard:", error);
+            logger.error('Error cargando dashboard:', error);
         }
     }
 
-    _createCriticalityChart(stats) {
-        const ctx = document.getElementById("chart-criticality").getContext("2d");
-
-        this.charts.criticality = new Chart(ctx, {
-            type: "doughnut",
-            data: {
-                labels: ["Alta", "Media", "Baja"],
-                datasets: [{
-                    data: [stats.alta, stats.media, stats.baja],
-                    backgroundColor: ["#F44336", "#FF9800", "#4CAF50"]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: "bottom" }
-                }
-            }
+    _showEmpty() {
+        const msg = '<p style="color:#bbb; text-align:center; padding:24px 0; font-size:14px;">Sin datos para mostrar. Agregá registros desde la pestaña Registros.</p>';
+        ['dash-chart-monthly', 'dash-chart-estado', 'dash-chart-top'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.parentNode) el.parentNode.innerHTML = msg;
         });
+        const recent = document.getElementById('dash-recent');
+        if (recent) recent.innerHTML = msg;
     }
 
-    _createStateChart(stats) {
-        const ctx = document.getElementById("chart-state").getContext("2d");
+    // ── Agrupaciones ────────────────────────────────────────────────────────────
 
-        this.charts.state = new Chart(ctx, {
-            type: "pie",
-            data: {
-                labels: ["Abiertos", "En Proceso", "Cerrados"],
-                datasets: [{
-                    data: [stats.abiertos, stats.enProceso, stats.cerrados],
-                    backgroundColor: ["#F44336", "#FF9800", "#4CAF50"]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: "bottom" }
-                }
-            }
+    _groupByMonth(visitas) {
+        const data = {};
+        visitas.forEach(v => {
+            if (!v.fechaVisita) return;
+            const d = new Date(v.fechaVisita);
+            if (isNaN(d)) return;
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            data[key] = (data[key] || 0) + 1;
         });
+
+        const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        const sorted = Object.keys(data).sort();
+        return {
+            labels: sorted.map(k => {
+                const [y, m] = k.split('-');
+                return `${MESES[parseInt(m) - 1]} ${y}`;
+            }),
+            values: sorted.map(k => data[k])
+        };
     }
 
-    async _createMonthlyChart(incidents) {
-        const monthlyData = {};
-
-        incidents.forEach(incident => {
-            const month = DateUtils.format(incident.fechaDeteccion, "MM/YYYY");
-            monthlyData[month] = (monthlyData[month] || 0) + 1;
+    _getTopPDVs(visitas, n) {
+        const counts = {};
+        visitas.forEach(v => {
+            const name = (v.nombrePDV || 'Sin nombre').trim();
+            counts[name] = (counts[name] || 0) + 1;
         });
+        return Object.entries(counts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, n);
+    }
 
-        const months = Object.keys(monthlyData).sort();
-        const values = months.map(m => monthlyData[m]);
+    // ── Gráficos ─────────────────────────────────────────────────────────────────
 
-        const ctx = document.getElementById("chart-monthly").getContext("2d");
+    _createMonthlyChart(visitas) {
+        const ctx = document.getElementById('dash-chart-monthly');
+        if (!ctx || !window.Chart) return;
+
+        const { labels, values } = this._groupByMonth(visitas);
 
         this.charts.monthly = new Chart(ctx, {
-            type: "line",
+            type: 'bar',
             data: {
-                labels: months,
+                labels,
                 datasets: [{
-                    label: "Incidentes",
+                    label: 'PDVs levantados',
                     data: values,
-                    borderColor: "#1976D2",
-                    backgroundColor: "rgba(25, 118, 210, 0.1)",
-                    tension: 0.4,
-                    fill: true
+                    backgroundColor: 'rgba(25, 118, 210, 0.72)',
+                    borderColor: '#1976D2',
+                    borderWidth: 1,
+                    borderRadius: 5
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: true }
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
                 }
             }
         });
     }
 
-    async _createTopPDVChart() {
-        const topPDVs = await incidentModel.getTopProblematicPDV(5);
-        const pdvNames = [];
-        const pdvCounts = [];
+    _createEstadoChart(enProgreso, cerrados) {
+        const ctx = document.getElementById('dash-chart-estado');
+        if (!ctx || !window.Chart) return;
 
-        for (const { pdvId, count } of topPDVs) {
-            const pdv = await pdvModel.getById(pdvId);
-            pdvNames.push(pdv?.nombre || "N/A");
-            pdvCounts.push(count);
-        }
+        this.charts.estado = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['En Progreso', 'Cerrados'],
+                datasets: [{
+                    data: [enProgreso, cerrados],
+                    backgroundColor: ['#FF9800', '#4CAF50'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
 
-        const ctx = document.getElementById("chart-top-pdv").getContext("2d");
+    _createTopPDVChart(visitas) {
+        const ctx = document.getElementById('dash-chart-top');
+        if (!ctx || !window.Chart) return;
+
+        const top = this._getTopPDVs(visitas, 5);
 
         this.charts.topPDV = new Chart(ctx, {
-            type: "barH",
+            type: 'bar',
             data: {
-                labels: pdvNames,
+                labels: top.map(([name]) => name),
                 datasets: [{
-                    label: "Incidentes",
-                    data: pdvCounts,
-                    backgroundColor: "#FF9800"
+                    label: 'Visitas',
+                    data: top.map(([, count]) => count),
+                    backgroundColor: 'rgba(156, 39, 176, 0.72)',
+                    borderColor: '#9C27B0',
+                    borderWidth: 1,
+                    borderRadius: 5
                 }]
             },
             options: {
-                indexAxis: "y",
+                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, ticks: { stepSize: 1 } }
                 }
             }
         });
     }
 
-    async _showRecentIncidents(incidents) {
-        const container = document.getElementById("recent-incidents");
+    // ── Tabla de últimos registros ───────────────────────────────────────────────
 
-        if (incidents.length === 0) {
-            container.innerHTML = '<p class="text-muted">No hay incidentes</p>';
+    _showRecentVisitas(visitas) {
+        const container = document.getElementById('dash-recent');
+        if (!container) return;
+
+        if (visitas.length === 0) {
+            container.innerHTML = '<p style="color:#bbb; text-align:center; padding:24px 0;">Sin registros</p>';
             return;
         }
 
-        let html = '<table style="width: 100%;"><tbody>';
+        const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
-        for (const incident of incidents) {
-            const pdv = await pdvModel.getById(incident.pdvId);
-            const color = FormatUtils.getStateColor(incident.criticidad);
+        const rows = visitas.map(v => {
+            const d     = v.fechaVisita ? new Date(v.fechaVisita) : null;
+            const fecha = d && !isNaN(d)
+                ? `${d.getDate().toString().padStart(2,'0')} ${MESES[d.getMonth()]} ${d.getFullYear()}`
+                : '—';
 
-            html += `
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 10px; flex: 1;">
-                        <strong>${pdv?.nombre}</strong><br>
-                        <small style="color: #999;">${DateUtils.format(incident.fechaDeteccion)}</small>
-                    </td>
-                    <td style="padding: 10px; width: 200px;">
-                        ${FormatUtils.truncate(incident.descripcion, 40)}
-                    </td>
-                    <td style="padding: 10px; text-align: center; width: 100px;">
-                        <span class="badge" style="background-color: ${color}; color: white;">
-                            ${incident.criticidad}
-                        </span>
-                    </td>
+            const esCerrado   = v.estado === 'cerrado';
+            const badgeColor  = esCerrado ? '#4CAF50' : '#FF9800';
+            const badgeLabel  = esCerrado ? 'Cerrado'  : 'En progreso';
+
+            return `
+            <tr style="border-bottom:1px solid #f0f0f0;">
+                <td style="padding:10px 12px; font-weight:600; font-size:13px;">${this._esc(v.nombrePDV) || '—'}</td>
+                <td style="padding:10px 12px; font-size:13px; color:#666;">${v.nroCliente ? '#' + this._esc(v.nroCliente) : '—'}</td>
+                <td style="padding:10px 12px; font-size:13px; color:#888;">${fecha}</td>
+                <td style="padding:10px 12px;">
+                    <span style="background:${badgeColor}; color:#fff; padding:3px 10px;
+                                 border-radius:12px; font-size:11px; font-weight:700;">
+                        ${badgeLabel}
+                    </span>
+                </td>
+            </tr>`;
+        }).join('');
+
+        container.innerHTML = `
+        <table style="width:100%; border-collapse:collapse;">
+            <thead>
+                <tr style="border-bottom:2px solid #e0e0e0;">
+                    <th style="padding:8px 12px; font-size:12px; color:#666; text-align:left; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">PDV</th>
+                    <th style="padding:8px 12px; font-size:12px; color:#666; text-align:left; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Nro. Cliente</th>
+                    <th style="padding:8px 12px; font-size:12px; color:#666; text-align:left; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Fecha</th>
+                    <th style="padding:8px 12px; font-size:12px; color:#666; text-align:left; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Estado</th>
                 </tr>
-            `;
-        }
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+    }
 
-        html += '</tbody></table>';
-        container.innerHTML = html;
+    _esc(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g,  '&amp;')
+            .replace(/</g,  '&lt;')
+            .replace(/>/g,  '&gt;')
+            .replace(/"/g,  '&quot;');
     }
 }
 

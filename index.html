@@ -38,8 +38,20 @@
             </div>
         </header>
 
-        <!-- Toolbar -->
-        <div class="nav-tabs" style="justify-content: space-between; padding: 0 24px; flex-wrap: wrap; gap: 8px;">
+        <!-- Tab Navigation -->
+        <div class="nav-tabs tab-nav-bar">
+            <button id="tab-registros" class="tab-btn active">
+                <span class="material-icons">list_alt</span>
+                Registros
+            </button>
+            <button id="tab-dashboard" class="tab-btn">
+                <span class="material-icons">dashboard</span>
+                Dashboard
+            </button>
+        </div>
+
+        <!-- Toolbar (solo Registros) -->
+        <div id="toolbar-registros" class="nav-tabs" style="justify-content: space-between; padding: 0 24px; flex-wrap: wrap; gap: 8px;">
             <div style="display:flex; gap:12px; align-items:center;">
                 <button id="btn-add-visita" class="btn btn-primary">
                     <span class="material-icons">add</span>
@@ -49,13 +61,13 @@
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
                 <input type="text" id="search-input" class="search-input"
-                       placeholder="Buscar por cliente, PDV, dirección..."
+                       placeholder="Buscar por cliente, PDV, estado..."
                        style="min-width:280px;">
             </div>
         </div>
 
-        <!-- Leyenda de botones de cabecera -->
-        <div style="background:#F3F4F6; border-bottom:1px solid #e0e0e0; padding:6px 24px; display:flex; gap:24px; font-size:12px; color:#666;">
+        <!-- Leyenda de botones de cabecera (solo Registros) -->
+        <div id="legend-registros" style="background:#F3F4F6; border-bottom:1px solid #e0e0e0; padding:6px 24px; display:flex; gap:24px; font-size:12px; color:#666;">
             <span><span class="material-icons" style="font-size:14px; vertical-align:middle;">file_download</span> Plantilla</span>
             <span><span class="material-icons" style="font-size:14px; vertical-align:middle;">cloud_download</span> Exportar Excel</span>
             <span><span class="material-icons" style="font-size:14px; vertical-align:middle;">upload_file</span> Importar Excel</span>
@@ -65,6 +77,9 @@
         <main class="main-content">
             <section id="visitas-view" class="view active">
                 <div id="visitas-list"></div>
+            </section>
+            <section id="dashboard-view" class="view">
+                <!-- Renderizado por DashboardView -->
             </section>
         </main>
 
@@ -83,7 +98,7 @@
 
     <!-- Librerías externas -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- uuid reemplazado por crypto.randomUUID() nativo del browser -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
     <!-- Configuración -->
     <script src="js/config.js"></script>
@@ -110,12 +125,14 @@
     <script src="js/views/BaseView.js"></script>
     <script src="js/views/ModalView.js"></script>
     <script src="js/views/VisitaView.js"></script>
+    <script src="js/views/DashboardView.js"></script>
 
     <!-- Auth Service (requiere ModalView) -->
     <script src="js/services/AuthService.js"></script>
 
     <!-- Controladores -->
     <script src="js/controllers/VisitaController.js"></script>
+    <script src="js/controllers/DashboardController.js"></script>
 
     <!-- App principal -->
     <script src="js/main.js"></script>
