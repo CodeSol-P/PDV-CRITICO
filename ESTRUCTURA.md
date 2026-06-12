@@ -1,4 +1,4 @@
-# 📁 Estructura del Proyecto PDV Crítico
+# Estructura del Proyecto PDV Crítico
 
 ```
 PDV CRITICO/
@@ -55,7 +55,7 @@ PDV CRITICO/
     └── (Ver líneas de script en index.html)
 ```
 
-## 📊 Diagrama de Relaciones
+## Diagrama de Relaciones
 
 ```
 PDV (1)
@@ -89,7 +89,7 @@ Modelo emite evento
 Vista se actualiza automáticamente
 ```
 
-## 📝 Enumeraciones Disponibles
+## Enumeraciones Disponibles
 
 ### Estados de PDV
 - `Activo`
@@ -116,7 +116,7 @@ Vista se actualiza automáticamente
 - `Parcial`
 - `Fallida`
 
-## 🔐 Almacenamiento
+## Almacenamiento
 
 ### IndexedDB Stores
 - `pdv` - Puntos de Venta
@@ -129,7 +129,7 @@ Vista se actualiza automáticamente
 - Datos persisten hasta que usuario limpie el navegador
 - Backup automático con JSON
 
-## 🎨 Diseño
+## Diseño
 
 ### Colores Principales
 - Primary: `#1976D2` (Azul)
@@ -213,18 +213,18 @@ Vista se actualiza automáticamente
 
 ## 🎯 Características Implementadas
 
-✅ CRUD completo para PDV, Incidentes, Acciones
-✅ Carga de evidencias (imágenes Base64)
-✅ Sincronización Excel bidireccional
-✅ Dashboard con 4 gráficos interactivos
-✅ Búsqueda y filtrado en tiempo real
-✅ Validación de formularios
-✅ Logs de sistema
-✅ Backup/Restore JSON
-✅ Responsive Design
-✅ Material Design UI
+CRUD completo para PDV, Incidentes, Acciones
+Carga de evidencias (imágenes Base64)
+Sincronización Excel bidireccional
+Dashboard con 4 gráficos interactivos
+Búsqueda y filtrado en tiempo real
+Validación de formularios
+Logs de sistema
+Backup/Restore JSON
+Responsive Design
+Material Design UI
 
-## 🎓 Patrones de Desarrollo
+## Patrones de Desarrollo
 
 ### MVC Architecture
 - Model: Lógica de datos y validación
@@ -244,7 +244,7 @@ Vista se actualiza automáticamente
 - Models emiten eventos
 - Views se suscriben
 
-## 📚 Documentación Adicional
+## Documentación Adicional
 
 - Ver comentarios en el código (documentados en español)
 - Leer README.md para guía de usuario
