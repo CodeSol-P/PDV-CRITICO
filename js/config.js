@@ -8,7 +8,12 @@ const APP_CONFIG = {
     version:    "2.0.0",
     author:     "Grupo Cargo SA",
 
-    // Base de datos (nombre nuevo para evitar conflictos con versión anterior)
+    // ── Supabase ── Reemplazá estos valores con los de tu proyecto ──────────
+    supabase_url:      'https://TU_PROYECTO.supabase.co',
+    supabase_anon_key: 'TU_ANON_KEY',
+    // ────────────────────────────────────────────────────────────────────────
+
+    // (ya no se usa IndexedDB, estas claves quedan por compatibilidad)
     db_name:    "pdvcritico_visitas_db",
     db_version: 1,
 
