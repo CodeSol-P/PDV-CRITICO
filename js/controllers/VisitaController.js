@@ -9,10 +9,11 @@ class VisitaController {
     }
 
     _setupEvents() {
-        eventBus.on('visita:create', ()  => this.openCreateModal());
-        eventBus.on('visita:edit',   (d) => this.openEditModal(d.id));
-        eventBus.on('visita:delete', (d) => this.requestDelete(d.id));
-        eventBus.on('visita:view',   (d) => this.openDetailModal(d.id));
+        eventBus.on('visita:create',   ()  => this.openCreateModal());
+        eventBus.on('visita:edit',     (d) => this.openEditModal(d.id));
+        eventBus.on('visita:delete',   (d) => this.requestDelete(d.id));
+        eventBus.on('visita:view',     (d) => this.openDetailModal(d.id));
+        eventBus.on('visita:lightbox', (d) => this._openLightbox(d.imagenes, d.startIdx || 0));
     }
 
     // ── HTML del formulario ────────────────────────────────────────────────────
@@ -125,7 +126,6 @@ class VisitaController {
         });
 
         modal.open(this._buildFormHTML());
-        // Inicializar upload DESPUÉS de abrir (DOM listo)
         getImages = this._setupImageUpload(modal, []);
     }
 
@@ -134,7 +134,7 @@ class VisitaController {
             visitaView.showLoading();
             const record = {
                 ...data,
-                imagenes:   data.imagenes || [],
+                imagenes:    data.imagenes || [],
                 fechaVisita: data.fechaVisita
                     ? new Date(data.fechaVisita).toISOString()
                     : new Date().toISOString()
@@ -194,7 +194,7 @@ class VisitaController {
             visitaView.showLoading();
             const record = {
                 ...data,
-                imagenes:   data.imagenes || [],
+                imagenes:    data.imagenes || [],
                 fechaVisita: data.fechaVisita
                     ? new Date(data.fechaVisita).toISOString()
                     : new Date().toISOString()
@@ -212,10 +212,6 @@ class VisitaController {
 
     // ── Carga de imágenes ──────────────────────────────────────────────────────
 
-    /**
-     * Inicializa el upload de imágenes en el modal.
-     * Retorna una función getImages() que devuelve el array de base64 actuales.
-     */
     _setupImageUpload(modal, initialImages = []) {
         let images = [...initialImages];
 
@@ -227,7 +223,9 @@ class VisitaController {
                 <div style="position:relative; display:inline-block;">
                     <img src="${b64}" style="
                         width:90px; height:90px; object-fit:cover;
-                        border-radius:6px; border:2px solid #ddd; display:block;">
+                        border-radius:6px; border:2px solid #ddd; display:block;
+                        cursor:zoom-in;"
+                        title="Clic para ampliar">
                     <button type="button" data-idx="${i}" class="img-del-btn" style="
                         position:absolute; top:-8px; right:-8px;
                         background:#E53935; color:#fff; border:none;
@@ -237,6 +235,11 @@ class VisitaController {
                 </div>
             `).join('');
 
+            // Ver imagen completa
+            grid.querySelectorAll('img[title="Clic para ampliar"]').forEach((img, i) => {
+                img.addEventListener('click', () => this._openLightbox(images, i));
+            });
+
             grid.querySelectorAll('.img-del-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     images.splice(parseInt(btn.dataset.idx), 1);
@@ -245,7 +248,7 @@ class VisitaController {
             });
         };
 
-        render(); // Mostrar imágenes existentes (edición)
+        render();
 
         const fileInput = modal.getElement('#img-file-input');
         if (fileInput) {
@@ -261,7 +264,7 @@ class VisitaController {
                     }
                 }
                 render();
-                fileInput.value = ''; // Permite volver a seleccionar el mismo archivo
+                fileInput.value = '';
             });
         }
 
@@ -277,65 +280,287 @@ class VisitaController {
         });
     }
 
-    // ── Ver detalle ────────────────────────────────────────────────────────────
+    // ── Panel de detalle moderno ───────────────────────────────────────────────
 
     async openDetailModal(id) {
+        // Cerrar detalle previo si existe
+        const existing = document.getElementById('pdv-detail-overlay');
+        if (existing) { existing.remove(); document.body.style.overflow = ''; }
+
         const v = await visitaModel.getById(id);
         if (!v) { visitaView.showToast('Registro no encontrado', 'error'); return; }
 
-        const fila = (label, value) => `
-            <tr>
-                <td style="font-weight:600; padding:10px 16px 10px 0; width:35%;
-                           vertical-align:top; border-bottom:1px solid #f0f0f0;
-                           color:#555; font-size:13px;">${label}</td>
-                <td style="padding:10px 0; border-bottom:1px solid #f0f0f0;
-                           font-size:13px; white-space:pre-wrap; word-break:break-word;">
-                    ${this._esc(value) || '<span style="color:#ccc;">—</span>'}
-                </td>
-            </tr>`;
+        const imagenes  = Array.isArray(v.imagenes) ? v.imagenes : [];
+        let currentImg  = 0;
 
-        const galeriaHTML = (v.imagenes && v.imagenes.length > 0) ? `
-            <div style="margin-top:20px;">
-                <p style="font-weight:600; font-size:13px; color:#555; margin-bottom:10px;">
-                    Imágenes adjuntas (${v.imagenes.length})
-                </p>
-                <div style="display:flex; flex-wrap:wrap; gap:10px;">
-                    ${v.imagenes.map((b64, i) => `
-                        <a href="${b64}" target="_blank" title="Ver imagen ${i + 1}">
-                            <img src="${b64}" style="
-                                width:120px; height:120px; object-fit:cover;
-                                border-radius:8px; border:2px solid #ddd;
-                                cursor:zoom-in; transition:transform .15s;"
-                                onmouseover="this.style.transform='scale(1.06)'"
-                                onmouseout="this.style.transform='scale(1)'">
-                        </a>`).join('')}
-                </div>
-            </div>` : '';
+        const overlay = document.createElement('div');
+        overlay.id        = 'pdv-detail-overlay';
+        overlay.className = 'pdv-detail-overlay';
+        overlay.innerHTML = this._buildDetailHTML(v, imagenes);
+        document.body.appendChild(overlay);
+        document.body.style.overflow = 'hidden';
 
-        const html = `
-            <div style="padding:24px;">
-                <table style="width:100%; border-collapse:collapse;">
-                    ${fila('Nro. Cliente',           v.nroCliente)}
-                    ${fila('Nombre PDV',             v.nombrePDV)}
-                    ${fila('Dirección',              v.direccion)}
-                    ${fila('Fecha de Visita',        v.fechaVisita ? DateUtils.format(v.fechaVisita) : '')}
-                    ${fila('Inconveniente Ocurrido', v.inconveniente)}
-                    ${fila('Soluciones',             v.soluciones)}
-                    ${fila('Estado',                 v.estado === 'cerrado' ? 'Cerrado' : 'En progreso')}
-                </table>
-                ${galeriaHTML}
-            </div>`;
+        requestAnimationFrame(() => overlay.classList.add('visible'));
 
-        const modal = new ModalView({
-            title:       `${this._esc(v.nombrePDV) || 'Detalle'} — ${v.fechaVisita ? DateUtils.format(v.fechaVisita) : ''}`,
-            size:        '700px',
-            closeButton: true,
-            footer:      true,
-            buttons: [{
-                text: 'Cerrar', className: 'btn-outline', onClick: () => modal.close()
-            }]
+        // ── Cerrar ──────────────────────────────────────────────────────────────
+        const close = () => {
+            overlay.classList.remove('visible');
+            setTimeout(() => {
+                if (overlay.parentNode) overlay.remove();
+                document.body.style.overflow = '';
+            }, 280);
+            document.removeEventListener('keydown', onKey);
+        };
+
+        overlay.querySelector('#pdv-det-close').addEventListener('click', close);
+        overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+        const onKey = (e) => { if (e.key === 'Escape') close(); };
+        document.addEventListener('keydown', onKey);
+
+        // ── Carrusel ────────────────────────────────────────────────────────────
+        if (imagenes.length > 1) {
+            const mainImg = overlay.querySelector('#pdv-main-img');
+            const counter = overlay.querySelector('#pdv-img-counter');
+            const thumbs  = overlay.querySelectorAll('.pdv-thumb');
+
+            const updateCarousel = () => {
+                if (mainImg) mainImg.src = imagenes[currentImg];
+                if (counter) counter.textContent = `${currentImg + 1} / ${imagenes.length}`;
+                thumbs.forEach((t, i) => t.classList.toggle('active', i === currentImg));
+            };
+
+            const prev = overlay.querySelector('#pdv-img-prev');
+            const next = overlay.querySelector('#pdv-img-next');
+
+            if (prev) prev.addEventListener('click', e => {
+                e.stopPropagation();
+                currentImg = (currentImg - 1 + imagenes.length) % imagenes.length;
+                updateCarousel();
+            });
+
+            if (next) next.addEventListener('click', e => {
+                e.stopPropagation();
+                currentImg = (currentImg + 1) % imagenes.length;
+                updateCarousel();
+            });
+
+            thumbs.forEach((t, i) => t.addEventListener('click', e => {
+                e.stopPropagation();
+                currentImg = i;
+                updateCarousel();
+            }));
+        }
+
+        // ── Lightbox al hacer clic en imagen principal ───────────────────────
+        if (imagenes.length > 0) {
+            const mainImg = overlay.querySelector('#pdv-main-img');
+            if (mainImg) mainImg.addEventListener('click', e => {
+                e.stopPropagation();
+                this._openLightbox(imagenes, currentImg);
+            });
+        }
+
+        // ── Editar ───────────────────────────────────────────────────────────
+        const editBtn = overlay.querySelector('#pdv-det-edit');
+        if (editBtn) editBtn.addEventListener('click', () => {
+            close();
+            setTimeout(() => {
+                authService.requireAuth('Editar Registro', () => {
+                    eventBus.emit('visita:edit', { id });
+                });
+            }, 100);
         });
-        modal.open(html);
+
+        // ── Eliminar ─────────────────────────────────────────────────────────
+        const delBtn = overlay.querySelector('#pdv-det-delete');
+        if (delBtn) delBtn.addEventListener('click', () => {
+            close();
+            setTimeout(() => eventBus.emit('visita:delete', { id }), 100);
+        });
+    }
+
+    _buildDetailHTML(v, imagenes) {
+        const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        const d     = v.fechaVisita ? new Date(v.fechaVisita) : null;
+        const fecha = d && !isNaN(d)
+            ? `${d.getDate().toString().padStart(2, '0')} ${MESES[d.getMonth()]} ${d.getFullYear()}`
+            : null;
+        const esCerrado = v.estado === 'cerrado';
+
+        // — Galería —
+        let galleryHTML = '';
+        if (imagenes.length > 0) {
+            const navHTML = imagenes.length > 1 ? `
+                <button class="pdv-gallery-nav pdv-gallery-prev" id="pdv-img-prev" title="Anterior">
+                    <span class="material-icons">chevron_left</span>
+                </button>
+                <button class="pdv-gallery-nav pdv-gallery-next" id="pdv-img-next" title="Siguiente">
+                    <span class="material-icons">chevron_right</span>
+                </button>
+                <div class="pdv-gallery-counter" id="pdv-img-counter">1 / ${imagenes.length}</div>` : '';
+
+            const thumbsHTML = imagenes.length > 1 ? `
+                <div class="pdv-gallery-thumbs">
+                    ${imagenes.map((img, i) => `
+                        <img src="${img}"
+                             class="pdv-thumb${i === 0 ? ' active' : ''}"
+                             data-idx="${i}"
+                             title="Imagen ${i + 1}" />`).join('')}
+                </div>` : '';
+
+            galleryHTML = `
+                <div class="pdv-detail-gallery">
+                    <div class="pdv-gallery-main">
+                        <img id="pdv-main-img" class="pdv-gallery-img"
+                             src="${imagenes[0]}" title="Clic para ampliar" />
+                        ${navHTML}
+                    </div>
+                    ${thumbsHTML}
+                </div>`;
+        } else {
+            galleryHTML = `
+                <div class="pdv-detail-gallery pdv-detail-gallery--empty">
+                    <span class="material-icons">store</span>
+                    <p>Sin imágenes cargadas</p>
+                </div>`;
+        }
+
+        return `
+        <div class="pdv-detail-panel">
+
+            <button class="pdv-detail-close" id="pdv-det-close" title="Cerrar (Esc)">
+                <span class="material-icons">close</span>
+            </button>
+
+            ${galleryHTML}
+
+            <div class="pdv-detail-content">
+
+                <div class="pdv-detail-top">
+                    <div class="pdv-detail-titulo">
+                        <h2 class="pdv-detail-nombre">${this._esc(v.nombrePDV) || '—'}</h2>
+                        ${fecha ? `<span class="pdv-detail-fecha">${fecha}</span>` : ''}
+                    </div>
+                    <span class="estado-badge estado-badge--${v.estado || 'en_progreso'}">
+                        ${esCerrado ? 'Cerrado' : 'En progreso'}
+                    </span>
+                </div>
+
+                ${v.nroCliente ? `
+                <div class="pdv-detail-codigo">
+                    <span class="material-icons">tag</span>
+                    Cliente #${this._esc(v.nroCliente)}
+                </div>` : ''}
+
+                ${v.direccion ? `
+                <div class="pdv-detail-direccion">
+                    <span class="material-icons">place</span>
+                    ${this._esc(v.direccion)}
+                </div>` : ''}
+
+                ${v.inconveniente ? `
+                <div class="pdv-detail-section">
+                    <h4 class="pdv-detail-section-title">
+                        <span class="material-icons">warning_amber</span>
+                        Inconveniente Ocurrido
+                    </h4>
+                    <p class="pdv-detail-section-text">${this._esc(v.inconveniente)}</p>
+                </div>` : ''}
+
+                ${v.soluciones ? `
+                <div class="pdv-detail-section">
+                    <h4 class="pdv-detail-section-title">
+                        <span class="material-icons">build_circle</span>
+                        Acciones Realizadas
+                    </h4>
+                    <p class="pdv-detail-section-text">${this._esc(v.soluciones)}</p>
+                </div>` : ''}
+
+                <div class="pdv-detail-footer-btns">
+                    <button class="btn btn-sm btn-outline" id="pdv-det-edit">
+                        <span class="material-icons">edit</span> Editar
+                    </button>
+                    <button class="btn btn-sm btn-danger" id="pdv-det-delete">
+                        <span class="material-icons">delete</span> Eliminar
+                    </button>
+                </div>
+
+            </div>
+        </div>`;
+    }
+
+    // ── Lightbox de imagen completa ────────────────────────────────────────────
+
+    _openLightbox(imagenes, startIdx = 0) {
+        const existing = document.getElementById('pdv-lightbox');
+        if (existing) existing.remove();
+
+        let idx          = Math.max(0, Math.min(startIdx, imagenes.length - 1));
+        const hasMulti   = imagenes.length > 1;
+
+        const lb = document.createElement('div');
+        lb.id        = 'pdv-lightbox';
+        lb.className = 'pdv-lightbox';
+        lb.innerHTML = `
+            <button class="pdv-lb-close" id="pdv-lb-close" title="Cerrar (Esc)">
+                <span class="material-icons">close</span>
+            </button>
+            ${hasMulti ? `
+            <button class="pdv-lb-nav pdv-lb-prev" id="pdv-lb-prev" title="Anterior (←)">
+                <span class="material-icons">chevron_left</span>
+            </button>` : ''}
+            <div class="pdv-lb-img-wrap">
+                <img id="pdv-lb-img" class="pdv-lb-img" src="${imagenes[idx]}" />
+            </div>
+            ${hasMulti ? `
+            <button class="pdv-lb-nav pdv-lb-next" id="pdv-lb-next" title="Siguiente (→)">
+                <span class="material-icons">chevron_right</span>
+            </button>
+            <div class="pdv-lb-counter" id="pdv-lb-counter">${idx + 1} / ${imagenes.length}</div>` : ''}
+        `;
+
+        document.body.appendChild(lb);
+        requestAnimationFrame(() => lb.classList.add('visible'));
+
+        const img     = lb.querySelector('#pdv-lb-img');
+        const counter = lb.querySelector('#pdv-lb-counter');
+
+        const updateLb = () => {
+            img.src = imagenes[idx];
+            if (counter) counter.textContent = `${idx + 1} / ${imagenes.length}`;
+        };
+
+        const closeLb = () => {
+            lb.classList.remove('visible');
+            setTimeout(() => { if (lb.parentNode) lb.remove(); }, 250);
+            document.removeEventListener('keydown', onLbKey);
+        };
+
+        lb.querySelector('#pdv-lb-close').addEventListener('click', closeLb);
+        lb.addEventListener('click', e => { if (e.target === lb) closeLb(); });
+
+        const prevBtn = lb.querySelector('#pdv-lb-prev');
+        const nextBtn = lb.querySelector('#pdv-lb-next');
+
+        if (prevBtn) prevBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            idx = (idx - 1 + imagenes.length) % imagenes.length;
+            updateLb();
+        });
+
+        if (nextBtn) nextBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            idx = (idx + 1) % imagenes.length;
+            updateLb();
+        });
+
+        const onLbKey = (e) => {
+            if (e.key === 'Escape')      closeLb();
+            if (e.key === 'ArrowLeft'  && hasMulti) { idx = (idx - 1 + imagenes.length) % imagenes.length; updateLb(); }
+            if (e.key === 'ArrowRight' && hasMulti) { idx = (idx + 1) % imagenes.length; updateLb(); }
+        };
+        document.addEventListener('keydown', onLbKey);
     }
 
     // ── Eliminar ───────────────────────────────────────────────────────────────
@@ -361,10 +586,10 @@ class VisitaController {
     _esc(text) {
         if (!text) return '';
         return String(text)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+            .replace(/&/g,  '&amp;')
+            .replace(/</g,  '&lt;')
+            .replace(/>/g,  '&gt;')
+            .replace(/"/g,  '&quot;');
     }
 }
 

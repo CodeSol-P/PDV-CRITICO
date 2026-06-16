@@ -110,7 +110,7 @@ class DashboardView {
 
             const sorted = visitas
                 .slice()
-                .sort((a, b) => new Date(b.fechaVisita) - new Date(a.fechaVisita));
+                .sort((a, b) => new Date(b.fechaCreacion) - new Date(a.fechaCreacion));
             this._showRecentVisitas(sorted.slice(0, 5));
 
         } catch (error) {
@@ -262,7 +262,7 @@ class DashboardView {
         const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
         const rows = visitas.map(v => {
-            const d     = v.fechaVisita ? new Date(v.fechaVisita) : null;
+            const d     = v.fechaCreacion ? new Date(v.fechaCreacion) : null;
             const fecha = d && !isNaN(d)
                 ? `${d.getDate().toString().padStart(2,'0')} ${MESES[d.getMonth()]} ${d.getFullYear()}`
                 : '—';
@@ -291,7 +291,7 @@ class DashboardView {
                 <tr style="border-bottom:2px solid #e0e0e0;">
                     <th style="padding:8px 12px; font-size:12px; color:#666; text-align:left; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">PDV</th>
                     <th style="padding:8px 12px; font-size:12px; color:#666; text-align:left; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Nro. Cliente</th>
-                    <th style="padding:8px 12px; font-size:12px; color:#666; text-align:left; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Fecha</th>
+                    <th style="padding:8px 12px; font-size:12px; color:#666; text-align:left; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Cargado</th>
                     <th style="padding:8px 12px; font-size:12px; color:#666; text-align:left; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Estado</th>
                 </tr>
             </thead>

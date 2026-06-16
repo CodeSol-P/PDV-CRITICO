@@ -12,15 +12,12 @@ class App {
         try {
             logger.info('Iniciando PDV Crítico v2...');
 
-            // Inicializar IndexedDB
             await db.init();
             logger.info('Base de datos lista');
 
-            // Conectar botones y tabs
             this._setupButtons();
             this._setupTabs();
 
-            // Renderizar tabla inicial
             await visitaView.render();
 
             this.isInitialized = true;
@@ -56,11 +53,8 @@ class App {
         if (viewRegistros) viewRegistros.classList.toggle('active', name === 'registros');
         if (viewDashboard) viewDashboard.classList.toggle('active', name === 'dashboard');
 
-        const showToolbar = name === 'registros';
         const toolbar = document.getElementById('toolbar-registros');
-        const legend  = document.getElementById('legend-registros');
-        if (toolbar) toolbar.style.display = showToolbar ? '' : 'none';
-        if (legend)  legend.style.display  = showToolbar ? '' : 'none';
+        if (toolbar) toolbar.style.display = name === 'registros' ? '' : 'none';
 
         if (name === 'dashboard') {
             dashboardController.renderDashboard();
@@ -79,103 +73,17 @@ class App {
             });
         }
 
-        // ── Importar Excel (requiere auth) ────────────────────────────────────
-        const btnImport  = document.getElementById('btn-import');
-        const fileInput  = document.getElementById('file-import-excel');
-
-        if (btnImport && fileInput) {
-            btnImport.addEventListener('click', () => {
-                authService.requireAuth('Importar Excel', () => fileInput.click());
-            });
-
-            fileInput.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                try {
-                    visitaView.showLoading();
-
-                    const { visitas, errors } = await ExcelManager.importFromExcel(file);
-
-                    let imported = 0;
-                    for (const v of visitas) {
-                        try {
-                            await visitaModel.create(v);
-                            imported++;
-                        } catch (err) {
-                            logger.warn('Error importando fila:', err);
-                        }
-                    }
-
-                    await visitaView.render();
-
-                    if (imported > 0) {
-                        visitaView.showToast(
-                            `${imported} registro${imported !== 1 ? 's' : ''} importado${imported !== 1 ? 's' : ''} correctamente`,
-                            'success'
-                        );
-                    } else {
-                        visitaView.showToast(
-                            'No se importaron registros. Verificá el formato del archivo.',
-                            'warning'
-                        );
-                    }
-
-                    if (errors.length > 0) {
-                        logger.warn('Filas omitidas durante importación:', errors);
-                        visitaView.showToast(
-                            `${errors.length} fila${errors.length !== 1 ? 's omitidas' : ' omitida'} (sin cliente ni PDV)`,
-                            'warning'
-                        );
-                    }
-
-                } catch (error) {
-                    logger.error('Error importando Excel:', error);
-                    visitaView.showToast(error.message || 'Error al importar el archivo', 'error');
-                } finally {
-                    visitaView.hideLoading();
-                    fileInput.value = '';
-                }
-            });
-        }
-
-        // ── Exportar Excel (sin auth) ─────────────────────────────────────────
+        // ── Exportar Excel ───────────────────────────────────────────────────
         const btnExport = document.getElementById('btn-export');
         if (btnExport) {
             btnExport.addEventListener('click', async () => {
-                try {
-                    visitaView.showLoading();
-                    const visitas = await visitaModel.getAll();
-
-                    if (visitas.length === 0) {
-                        visitaView.showToast('No hay registros para exportar', 'warning');
-                        return;
-                    }
-
-                    const { filename, records } = ExcelManager.exportToExcel(visitas);
-                    visitaView.showToast(
-                        `${records} registro${records !== 1 ? 's' : ''} exportado${records !== 1 ? 's' : ''} → ${filename}`,
-                        'success'
-                    );
-                } catch (error) {
-                    logger.error('Error exportando:', error);
-                    visitaView.showToast('Error al exportar', 'error');
-                } finally {
-                    visitaView.hideLoading();
+                const all = await visitaModel.getAll();
+                if (all.length === 0) {
+                    toastManager.show('No hay registros para exportar', 'warning');
+                    return;
                 }
-            });
-        }
-
-        // ── Descargar Plantilla (sin auth) ───────────────────────────────────
-        const btnTemplate = document.getElementById('btn-template');
-        if (btnTemplate) {
-            btnTemplate.addEventListener('click', () => {
-                try {
-                    ExcelManager.downloadTemplate();
-                    visitaView.showToast('Plantilla descargada', 'info');
-                } catch (error) {
-                    visitaView.showToast('Error al descargar la plantilla', 'error');
-                }
+                const { filename, records } = ExcelManager.exportToExcel(all);
+                toastManager.show(`${records} registros exportados como ${filename}`, 'success');
             });
         }
 

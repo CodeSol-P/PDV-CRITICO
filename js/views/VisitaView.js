@@ -1,8 +1,7 @@
 /**
  * VisitaView.js
  * Vista de registros PDV en formato de tarjetas tipo publicación.
- * Cada tarjeta muestra imagen, nombre, código, dirección e inconveniente,
- * con una sección expandible para ver el resto de la información.
+ * Hacer clic en la imagen o el nombre de un PDV abre el panel de detalle.
  */
 
 class VisitaView extends BaseView {
@@ -41,7 +40,7 @@ class VisitaView extends BaseView {
                     </span>
                     <p style="font-size:16px; color:#999; margin-bottom:8px;">No hay registros</p>
                     <p style="font-size:13px; color:#bbb;">
-                        Importá desde Excel o usá <strong>+ Nuevo Registro</strong>
+                        Usá <strong>+ Nuevo Registro</strong> para comenzar
                     </p>
                 </div>`;
             return;
@@ -63,12 +62,10 @@ class VisitaView extends BaseView {
         const inconvFull    = v.inconveniente || '';
         const inconvPreview = this._trunc(inconvFull, 120);
 
-        // ¿Hay algo para expandir?
         const needsToggle = inconvFull.length > 120 || !!v.soluciones || imagenes.length > 1;
 
-        // — Sección imagen —
         const imageHTML = hasImg
-            ? `<div class="pdv-card__image">
+            ? `<div class="pdv-card__image" title="Ver detalles">
                    <img src="${imagenes[0]}" alt="${this._esc(v.nombrePDV)}">
                    ${imagenes.length > 1
                        ? `<div class="pdv-card__img-badge">
@@ -77,11 +74,10 @@ class VisitaView extends BaseView {
                           </div>`
                        : ''}
                </div>`
-            : `<div class="pdv-card__image pdv-card__image--placeholder">
+            : `<div class="pdv-card__image pdv-card__image--placeholder" title="Ver detalles">
                    <span class="material-icons">store</span>
                </div>`;
 
-        // — Sección expandible (inconveniente completo + soluciones + galería) —
         const expandedHTML = needsToggle ? `
             <div class="pdv-card__expanded" id="exp-${v.id}">
 
@@ -104,7 +100,7 @@ class VisitaView extends BaseView {
                     </span>
                     <div class="pdv-card__mini-gallery">
                         ${imagenes.map(b64 => `
-                            <a href="${b64}" target="_blank" title="Ver imagen completa">
+                            <a class="pdv-card__gallery-link" data-src="${b64}" title="Ver imagen completa">
                                 <img src="${b64}" alt="imagen">
                             </a>`).join('')}
                     </div>
@@ -119,7 +115,9 @@ class VisitaView extends BaseView {
                 <span class="toggle-label">Ver más</span>
             </button>` : '';
 
-        // — Tarjeta completa —
+        const estadoClass = v.estado || 'en_progreso';
+        const estadoLabel = v.estado === 'cerrado' ? 'Cerrado' : 'En progreso';
+
         return `
         <div class="pdv-card" data-id="${v.id}">
 
@@ -127,7 +125,7 @@ class VisitaView extends BaseView {
 
             <div class="pdv-card__body">
 
-                <p class="pdv-card__nombre">${this._esc(v.nombrePDV) || '—'}</p>
+                <p class="pdv-card__nombre" title="Ver detalles">${this._esc(v.nombrePDV) || '—'}</p>
 
                 <div class="pdv-card__meta">
                     ${v.nroCliente
@@ -136,8 +134,8 @@ class VisitaView extends BaseView {
                     ${v.fechaVisita
                         ? `<span class="pdv-card__fecha">${DateUtils.format(v.fechaVisita)}</span>`
                         : ''}
-                    <span class="estado-badge estado-badge--${v.estado || 'en_progreso'}">
-                        ${v.estado === 'cerrado' ? 'Cerrado' : 'En progreso'}
+                    <span class="estado-badge estado-badge--${estadoClass}">
+                        ${estadoLabel}
                     </span>
                 </div>
 
@@ -183,7 +181,8 @@ class VisitaView extends BaseView {
 
         // Expandir / contraer
         container.querySelectorAll('.pdv-card__toggle').forEach(btn => {
-            this.addListener(btn, 'click', () => {
+            this.addListener(btn, 'click', (e) => {
+                e.stopPropagation();
                 const targetEl = document.getElementById(btn.dataset.target);
                 const label    = btn.querySelector('.toggle-label');
                 const isOpen   = btn.classList.toggle('open');
@@ -193,9 +192,43 @@ class VisitaView extends BaseView {
             });
         });
 
+        // Clic en imagen → abrir detalle
+        container.querySelectorAll('.pdv-card__image').forEach(el => {
+            this.addListener(el, 'click', () => {
+                const card = el.closest('.pdv-card');
+                if (card) eventBus.emit('visita:view', { id: card.dataset.id });
+            });
+        });
+
+        // Clic en nombre → abrir detalle
+        container.querySelectorAll('.pdv-card__nombre').forEach(el => {
+            this.addListener(el, 'click', () => {
+                const card = el.closest('.pdv-card');
+                if (card) eventBus.emit('visita:view', { id: card.dataset.id });
+            });
+        });
+
+        // Clic en imágenes de mini-galería → lightbox
+        container.querySelectorAll('.pdv-card__gallery-link').forEach(link => {
+            this.addListener(link, 'click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const src  = link.dataset.src;
+                const card = link.closest('.pdv-card');
+                if (!card) return;
+
+                const v = this.visitas.find(x => x.id === card.dataset.id);
+                if (!v || !Array.isArray(v.imagenes)) return;
+
+                const idx = v.imagenes.indexOf(src);
+                eventBus.emit('visita:lightbox', { imagenes: v.imagenes, startIdx: idx >= 0 ? idx : 0 });
+            });
+        });
+
         // Editar — requiere autenticación
         container.querySelectorAll('.btn-edit').forEach(btn => {
-            this.addListener(btn, 'click', () => {
+            this.addListener(btn, 'click', (e) => {
+                e.stopPropagation();
                 authService.requireAuth('Editar Registro', () => {
                     eventBus.emit('visita:edit', { id: btn.dataset.id });
                 });
@@ -204,7 +237,8 @@ class VisitaView extends BaseView {
 
         // Eliminar
         container.querySelectorAll('.btn-delete').forEach(btn => {
-            this.addListener(btn, 'click', () => {
+            this.addListener(btn, 'click', (e) => {
+                e.stopPropagation();
                 eventBus.emit('visita:delete', { id: btn.dataset.id });
             });
         });
