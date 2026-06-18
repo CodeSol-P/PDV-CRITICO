@@ -11,7 +11,6 @@ class VisitaController {
     _setupEvents() {
         eventBus.on('visita:create',   ()  => this.openCreateModal());
         eventBus.on('visita:edit',     (d) => this.openEditModal(d.id));
-        eventBus.on('visita:delete',   (d) => this.requestDelete(d.id));
         eventBus.on('visita:view',     (d) => this.openDetailModal(d.id));
         eventBus.on('visita:lightbox', (d) => this._openLightbox(d.imagenes, d.startIdx || 0));
     }
@@ -372,12 +371,6 @@ class VisitaController {
             }, 100);
         });
 
-        // ── Eliminar ─────────────────────────────────────────────────────────
-        const delBtn = overlay.querySelector('#pdv-det-delete');
-        if (delBtn) delBtn.addEventListener('click', () => {
-            close();
-            setTimeout(() => eventBus.emit('visita:delete', { id }), 100);
-        });
     }
 
     _buildDetailHTML(v, imagenes) {
@@ -480,9 +473,6 @@ class VisitaController {
                 <div class="pdv-detail-footer-btns">
                     <button class="btn btn-sm btn-outline" id="pdv-det-edit">
                         <span class="material-icons">edit</span> Editar
-                    </button>
-                    <button class="btn btn-sm btn-danger" id="pdv-det-delete">
-                        <span class="material-icons">delete</span> Eliminar
                     </button>
                 </div>
 

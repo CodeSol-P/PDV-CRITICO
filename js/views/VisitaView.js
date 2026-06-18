@@ -164,11 +164,6 @@ class VisitaView extends BaseView {
                             title="Editar">
                         <span class="material-icons">edit</span>
                     </button>
-                    <button class="btn btn-sm btn-danger btn-delete"
-                            data-id="${v.id}"
-                            title="Eliminar">
-                        <span class="material-icons">delete</span>
-                    </button>
                 </div>
 
             </div>
@@ -235,13 +230,6 @@ class VisitaView extends BaseView {
             });
         });
 
-        // Eliminar
-        container.querySelectorAll('.btn-delete').forEach(btn => {
-            this.addListener(btn, 'click', (e) => {
-                e.stopPropagation();
-                eventBus.emit('visita:delete', { id: btn.dataset.id });
-            });
-        });
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

@@ -39,22 +39,21 @@
         </div>
 
         <!-- Toolbar (solo Registros) -->
-        <div id="toolbar-registros" class="nav-tabs" style="justify-content: space-between; padding: 0 24px; flex-wrap: wrap; gap: 8px;">
-            <div style="display:flex; gap:12px; align-items:center;">
+        <div id="toolbar-registros" class="toolbar-registros">
+            <div class="toolbar-left">
                 <button id="btn-add-visita" class="btn btn-primary">
                     <span class="material-icons">add</span>
-                    Nuevo Registro
+                    <span class="btn-label">Nuevo Registro</span>
                 </button>
-                <span id="record-count" style="font-size:13px; color:#666;"></span>
+                <span id="record-count" class="record-count"></span>
             </div>
-            <div style="display:flex; gap:8px; align-items:center;">
+            <div class="toolbar-right">
                 <button id="btn-export" class="btn btn-secondary" title="Descargar registros en Excel">
                     <span class="material-icons">download</span>
-                    Descargar registros
+                    <span class="btn-label">Descargar</span>
                 </button>
                 <input type="text" id="search-input" class="search-input"
-                       placeholder="Buscar por cliente, PDV, estado..."
-                       style="min-width:280px;">
+                       placeholder="Buscar PDV, cliente...">
             </div>
         </div>
 
