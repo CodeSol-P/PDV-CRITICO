@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Conexión Supabase</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 60px auto; padding: 20px; }
+        input { width: 100%; padding: 10px; margin: 8px 0 16px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        button { background: #1976D2; color: white; padding: 12px 24px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; width: 100%; }
+        button:hover { background: #1565C0; }
+        #resultado { margin-top: 24px; padding: 16px; border-radius: 8px; font-size: 15px; display: none; }
+        .ok  { background: #E8F5E9; border: 2px solid #4CAF50; color: #2E7D32; }
+        .err { background: #FFEBEE; border: 2px solid #F44336; color: #B71C1C; }
+        label { font-weight: bold; font-size: 14px; color: #333; }
+    </style>
+</head>
+<body>
+    <h2>🔌 Test de Conexión Supabase</h2>
+    <p style="color:#666;">Pegá tus credenciales de Supabase → Settings → API y hacé clic en Probar.</p>
+
+    <label>Project URL</label>
+    <input id="url" type="text" placeholder="https://xxxxxxxx.supabase.co">
+
+    <label>Anon / Public Key</label>
+    <input id="key" type="text" placeholder="eyJ... o sb_publishable_...">
+
+    <button onclick="probar()">Probar conexión</button>
+
+    <div id="resultado"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        async function probar() {
+            const url = document.getElementById('url').value.trim();
+            const key = document.getElementById('key').value.trim();
+            const res = document.getElementById('resultado');
+
+            res.style.display = 'block';
+            res.className = '';
+            res.textContent = '⏳ Probando conexión...';
+
+            if (!url || !key) {
+                res.className = 'err';
+                res.textContent = '❌ Completá los dos campos.';
+                return;
+            }
+
+            try {
+                const client = supabase.createClient(url, key);
+                const { data, error } = await client.from('visitas').select('id').limit(1);
+
+                if (error) {
+                    res.className = 'err';
+                    res.textContent = '❌ Error: ' + error.message + '\n\nCódigo: ' + (error.code || 'sin código');
+                } else {
+                    res.className = 'ok';
+                    res.textContent = '✅ ¡Conexión exitosa! La tabla "visitas" responde correctamente.';
+                }
+            } catch (e) {
+                res.className = 'err';
+                res.textContent = '❌ Error al conectar: ' + (e.message || String(e));
+            }
+        }
+    </script>
+</body>
+</html>
