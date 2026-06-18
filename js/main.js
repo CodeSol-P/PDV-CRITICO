@@ -24,9 +24,10 @@ class App {
             logger.info('Aplicación lista');
 
         } catch (error) {
-            const msg = error?.message || String(error) || 'Error desconocido';
+            console.error('[PDV Crítico] Error completo:', error);
+            const msg = (error && error.message) ? error.message : String(error);
             logger.error('Error iniciando la aplicación:', msg);
-            this._showInitError(msg);
+            this._showInitError(msg || 'Error desconocido al conectar con la base de datos');
         } finally {
             const overlay = document.getElementById('loading-overlay');
             if (overlay) overlay.classList.remove('active');

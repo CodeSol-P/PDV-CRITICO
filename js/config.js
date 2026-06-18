@@ -10,7 +10,7 @@ const APP_CONFIG = {
 
     // ── Supabase ── Reemplazá estos valores con los de tu proyecto ──────────
     supabase_url:      'https://wganaxsnssvnnghgwsgh.supabase.co',
-    supabase_anon_key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndnYW5heHNuc3N2bm5naGd3c2doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzA2ODcsImV4cCI6MjA5NzIwNjY4N30.qtyFBBDPGZhNz_v0KYIMNv1ixT_jN4iSCAZksLwm0vs',
+    supabase_anon_key: 'sb_publishable_wmcgbDtL8PFuGf4OmiKl1g_m76jE35P',
     // ────────────────────────────────────────────────────────────────────────
 
     // (ya no se usa IndexedDB, estas claves quedan por compatibilidad)
