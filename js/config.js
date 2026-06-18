@@ -9,8 +9,8 @@ const APP_CONFIG = {
     author:     "Grupo Cargo SA",
 
     // ── Supabase ── Reemplazá estos valores con los de tu proyecto ──────────
-    supabase_url:      'https://TU_PROYECTO.supabase.co',
-    supabase_anon_key: 'TU_ANON_KEY',
+    supabase_url:      'https://wganaxsnssvnnghgwsgh.supabase.co',
+    supabase_anon_key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndnYW5heHNuc3N2bm5naGd3c2doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzA2ODcsImV4cCI6MjA5NzIwNjY4N30.qtyFBBDPGZhNz_v0KYIMNv1ixT_jN4iSCAZksLwm0vs',
     // ────────────────────────────────────────────────────────────────────────
 
     // (ya no se usa IndexedDB, estas claves quedan por compatibilidad)

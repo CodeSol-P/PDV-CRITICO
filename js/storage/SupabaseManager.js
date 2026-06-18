@@ -34,20 +34,39 @@ class SupabaseManager {
     async init() {
         if (this.isInitialized) return;
 
+        logger.info('Supabase URL:', APP_CONFIG.supabase_url);
+
         if (typeof supabase === 'undefined') {
             throw new Error('Supabase JS no está cargado. Verificá el CDN en index.html.');
         }
         if (!APP_CONFIG.supabase_url || APP_CONFIG.supabase_url.includes('TU_PROYECTO')) {
-            throw new Error('Configurá supabase_url y supabase_anon_key en js/config.js.');
+            throw new Error('Falta configurar supabase_url en config.js');
+        }
+        if (!APP_CONFIG.supabase_anon_key || APP_CONFIG.supabase_anon_key.includes('TU_ANON_KEY')) {
+            throw new Error('Falta configurar supabase_anon_key en config.js');
         }
 
-        this.client = supabase.createClient(
-            APP_CONFIG.supabase_url,
-            APP_CONFIG.supabase_anon_key
-        );
+        try {
+            this.client = supabase.createClient(
+                APP_CONFIG.supabase_url,
+                APP_CONFIG.supabase_anon_key
+            );
+        } catch (e) {
+            throw new Error('Error creando cliente Supabase: ' + (e.message || String(e)));
+        }
+
+        // Verificar conexión real con la tabla
+        const { error: testError } = await this.client
+            .from('visitas')
+            .select('id')
+            .limit(1);
+
+        if (testError) {
+            throw new Error('Error conectando a Supabase: ' + testError.message);
+        }
 
         this.isInitialized = true;
-        logger.info('Supabase inicializado correctamente');
+        logger.info('Supabase conectado correctamente');
     }
 
     // ── Mapeo camelCase ↔ snake_case ─────────────────────────────────────────

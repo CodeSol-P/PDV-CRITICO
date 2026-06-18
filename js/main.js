@@ -24,8 +24,9 @@ class App {
             logger.info('Aplicación lista');
 
         } catch (error) {
-            logger.error('Error iniciando la aplicación:', error);
-            this._showInitError(error.message);
+            const msg = error?.message || String(error) || 'Error desconocido';
+            logger.error('Error iniciando la aplicación:', msg);
+            this._showInitError(msg);
         } finally {
             const overlay = document.getElementById('loading-overlay');
             if (overlay) overlay.classList.remove('active');
