@@ -41,6 +41,8 @@ body {
     align-items: center;
     box-shadow: var(--shadow-2);
     flex-shrink: 0;
+    position: relative;
+    overflow: visible;
 }
 
 .header-content {
