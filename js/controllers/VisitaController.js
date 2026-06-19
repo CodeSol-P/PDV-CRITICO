@@ -82,14 +82,14 @@ class VisitaController {
                 <div style="display:flex; gap:10px;">
                     <div style="flex:1;">
                         <label style="font-size:12px; color:#666; margin-bottom:4px; display:block;">Latitud</label>
-                        <input type="number" name="latitud" step="any"
+                        <input type="text" name="latitud" inputmode="decimal"
                                value="${v.latitud || ''}"
                                placeholder="-26.808300"
                                style="font-size:13px;">
                     </div>
                     <div style="flex:1;">
                         <label style="font-size:12px; color:#666; margin-bottom:4px; display:block;">Longitud</label>
-                        <input type="number" name="longitud" step="any"
+                        <input type="text" name="longitud" inputmode="decimal"
                                value="${v.longitud || ''}"
                                placeholder="-65.217600"
                                style="font-size:13px;">
