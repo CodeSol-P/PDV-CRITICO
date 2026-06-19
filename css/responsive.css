@@ -143,6 +143,12 @@
     }
 }
 
+/* ── Mapa ───────────────────────────────────────────────────────────────── */
+
+#mapa-view {
+    padding: 20px;
+}
+
 /* ── Tablets (768px) ────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
     .toolbar-registros {
@@ -182,6 +188,10 @@
         right: var(--spacing-md);
         bottom: var(--spacing-md);
     }
+
+    /* Mapa en tablet */
+    #mapa-view { padding: 12px; }
+    #pdv-mapa  { height: 380px !important; }
 
     /* Panel de detalle en tablet */
     .pdv-detail-panel {
@@ -293,6 +303,10 @@
 
     /* Formulario */
     .form-group { margin-bottom: var(--spacing-md); }
+
+    /* Mapa en móvil */
+    #mapa-view { padding: 10px; }
+    #pdv-mapa  { height: 300px !important; }
 
     /* Panel de detalle: ocupa toda la pantalla desde abajo */
     .pdv-detail-panel {

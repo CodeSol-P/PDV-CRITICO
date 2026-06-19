@@ -37,30 +37,25 @@ class App {
     // ── Tabs ───────────────────────────────────────────────────────────────────
 
     _setupTabs() {
-        const tabRegistros = document.getElementById('tab-registros');
-        const tabDashboard = document.getElementById('tab-dashboard');
-
-        if (tabRegistros) tabRegistros.addEventListener('click', () => this._switchTab('registros'));
-        if (tabDashboard) tabDashboard.addEventListener('click', () => this._switchTab('dashboard'));
+        ['registros', 'dashboard', 'mapa'].forEach(t => {
+            const btn = document.getElementById(`tab-${t}`);
+            if (btn) btn.addEventListener('click', () => this._switchTab(t));
+        });
     }
 
     _switchTab(name) {
-        ['registros', 'dashboard'].forEach(t => {
-            const btn = document.getElementById(`tab-${t}`);
-            if (btn) btn.classList.toggle('active', t === name);
+        ['registros', 'dashboard', 'mapa'].forEach(t => {
+            const btn  = document.getElementById(`tab-${t}`);
+            const view = document.getElementById(t === 'registros' ? 'visitas-view' : `${t}-view`);
+            if (btn)  btn.classList.toggle('active', t === name);
+            if (view) view.classList.toggle('active', t === name);
         });
-
-        const viewRegistros = document.getElementById('visitas-view');
-        const viewDashboard = document.getElementById('dashboard-view');
-        if (viewRegistros) viewRegistros.classList.toggle('active', name === 'registros');
-        if (viewDashboard) viewDashboard.classList.toggle('active', name === 'dashboard');
 
         const toolbar = document.getElementById('toolbar-registros');
         if (toolbar) toolbar.style.display = name === 'registros' ? '' : 'none';
 
-        if (name === 'dashboard') {
-            dashboardController.renderDashboard();
-        }
+        if (name === 'dashboard') dashboardController.renderDashboard();
+        if (name === 'mapa')      mapaController.renderMapa();
     }
 
     // ── Botones ────────────────────────────────────────────────────────────────
