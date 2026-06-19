@@ -72,6 +72,37 @@ class VisitaController {
                 </select>
             </div>
 
+            <!-- Sección de ubicación -->
+            <div class="form-group">
+                <label>Ubicación en el mapa</label>
+                <p style="font-size:12px; color:#888; margin:-4px 0 10px;">
+                    Hacé clic en el mapa para marcar la ubicación exacta del PDV, o ingresá las coordenadas manualmente.
+                </p>
+                <div id="mini-mapa-picker" style="height:220px; border-radius:8px; border:1.5px solid #ddd; overflow:hidden; margin-bottom:10px;"></div>
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1;">
+                        <label style="font-size:12px; color:#666; margin-bottom:4px; display:block;">Latitud</label>
+                        <input type="number" name="latitud" step="0.000001"
+                               value="${v.latitud || ''}"
+                               placeholder="-26.808300"
+                               style="font-size:13px;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:12px; color:#666; margin-bottom:4px; display:block;">Longitud</label>
+                        <input type="number" name="longitud" step="0.000001"
+                               value="${v.longitud || ''}"
+                               placeholder="-65.217600"
+                               style="font-size:13px;">
+                    </div>
+                    <div style="display:flex; align-items:flex-end; padding-bottom:2px;">
+                        <button type="button" id="btn-clear-coords" class="btn btn-sm btn-outline"
+                                title="Limpiar coordenadas" style="white-space:nowrap;">
+                            <span class="material-icons" style="font-size:16px;">clear</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Sección de imágenes -->
             <div class="form-group">
                 <label>Imágenes</label>
@@ -126,6 +157,7 @@ class VisitaController {
 
         modal.open(this._buildFormHTML());
         getImages = this._setupImageUpload(modal, []);
+        this._setupMiniMap(modal, null, null);
     }
 
     async create(data) {
@@ -136,7 +168,9 @@ class VisitaController {
                 imagenes:    data.imagenes || [],
                 fechaVisita: data.fechaVisita
                     ? new Date(data.fechaVisita).toISOString()
-                    : new Date().toISOString()
+                    : new Date().toISOString(),
+                latitud:  data.latitud  ? parseFloat(data.latitud)  : null,
+                longitud: data.longitud ? parseFloat(data.longitud) : null,
             };
             await visitaModel.create(record);
             visitaView.showToast('Registro creado exitosamente', 'success');
@@ -186,6 +220,7 @@ class VisitaController {
 
         modal.open(this._buildFormHTML(visita));
         getImages = this._setupImageUpload(modal, visita.imagenes || []);
+        this._setupMiniMap(modal, visita.latitud || null, visita.longitud || null);
     }
 
     async update(id, data) {
@@ -196,7 +231,9 @@ class VisitaController {
                 imagenes:    data.imagenes || [],
                 fechaVisita: data.fechaVisita
                     ? new Date(data.fechaVisita).toISOString()
-                    : new Date().toISOString()
+                    : new Date().toISOString(),
+                latitud:  data.latitud  ? parseFloat(data.latitud)  : null,
+                longitud: data.longitud ? parseFloat(data.longitud) : null,
             };
             await visitaModel.update(id, record);
             visitaView.showToast('Registro actualizado', 'success');
@@ -207,6 +244,69 @@ class VisitaController {
         } finally {
             visitaView.hideLoading();
         }
+    }
+
+    // ── Mini mapa selector de coordenadas ─────────────────────────────────────
+
+    _setupMiniMap(modal, initLat, initLon) {
+        if (typeof L === 'undefined') return;
+
+        const el = modal.getElement('#mini-mapa-picker');
+        if (!el) return;
+
+        const center = (initLat && initLon) ? [initLat, initLon] : [-26.8083, -65.2176];
+        const zoom   = (initLat && initLon) ? 16 : 13;
+
+        const miniMap = L.map('mini-mapa-picker', { zoomControl: true }).setView(center, zoom);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap © CARTO',
+            maxZoom: 19
+        }).addTo(miniMap);
+
+        const latInput = modal.getElement('[name="latitud"]');
+        const lonInput = modal.getElement('[name="longitud"]');
+        let marker     = null;
+
+        const setMarker = (lat, lon) => {
+            if (marker) miniMap.removeLayer(marker);
+            marker = L.circleMarker([lat, lon], {
+                radius: 10, fillColor: '#1976D2', color: '#fff',
+                weight: 2.5, fillOpacity: 0.95
+            }).addTo(miniMap);
+            if (latInput) latInput.value = lat.toFixed(6);
+            if (lonInput) lonInput.value = lon.toFixed(6);
+        };
+
+        if (initLat && initLon) setMarker(initLat, initLon);
+
+        miniMap.on('click', e => {
+            setMarker(e.latlng.lat, e.latlng.lng);
+            miniMap.setView([e.latlng.lat, e.latlng.lng]);
+        });
+
+        const updateFromInputs = () => {
+            const lat = parseFloat(latInput && latInput.value);
+            const lon = parseFloat(lonInput && lonInput.value);
+            if (!isNaN(lat) && !isNaN(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+                setMarker(lat, lon);
+                miniMap.setView([lat, lon], Math.max(miniMap.getZoom(), 15));
+            }
+        };
+
+        if (latInput) latInput.addEventListener('blur', updateFromInputs);
+        if (lonInput) lonInput.addEventListener('blur', updateFromInputs);
+
+        const clearBtn = modal.getElement('#btn-clear-coords');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                if (latInput) latInput.value = '';
+                if (lonInput) lonInput.value = '';
+                if (marker)  { miniMap.removeLayer(marker); marker = null; }
+            });
+        }
+
+        setTimeout(() => miniMap.invalidateSize(), 250);
     }
 
     // ── Carga de imágenes ──────────────────────────────────────────────────────
